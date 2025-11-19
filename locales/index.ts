@@ -8,4 +8,4 @@ export const translations = {
 };
 
 export type Language = 'en' | 'ar';
-export type Translations = typeof enTranslations;
+export type Translations = Record<string, any>;

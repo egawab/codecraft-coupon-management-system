@@ -50,157 +50,78 @@
           "description": "Automate affiliate commissions and referrer bonuses without spreadsheets or manual payouts."
         },
         {
-          "title": "Scale with intelligence",
-          "description": "Real-time analytics help you double down on the campaigns and partners that drive revenue."
+          "title": "Grow together",
+          "description": "Scale through partner referrals with automated credit allocation and performance insights."
         }
       ]
-    },
-    "howItWorks": {
-      "title": "How It Works",
-      "step1": {
-        "title": "1. Create",
-        "description": "Sign up as a shop owner and create your first coupon campaign in minutes using your free credits."
-      },
-      "step2": {
-        "title": "2. Refer",
-        "description": "Share your unique referral link. When another shop signs up and uses a coupon, you earn bonus credits."
-      },
-      "step3": {
-        "title": "3. Grow",
-        "description": "Use your earned credits to fund more campaigns, expanding your reach within our B2B marketplace."
-      }
-    },
-    "workflow": {
-      "title": "Your referral engine, fully automated",
-      "description": "From the first coupon creation to the final redemption, every step is tracked, validated, and rewarded through CodeCraft."
-    },
-    "ctaSection": {
-      "highlight": "Ready to get started?",
-      "title": "Turn every partner into a growth channel",
-      "subtitle": "Create a free account, invite your partners, and launch your first campaign today.",
-      "primary": "Create Free Account",
-      "secondary": "Talk to Partnerships Team"
     }
   },
   "loginPage": {
-    "welcomeBack": "Welcome Back!",
-    "createAccount": "Create Your Account",
-    "referredWelcome": "Welcome!",
-    "referredMessage": "You've been referred! Sign up now to receive <strong>5,000 free credits</strong>.",
-    "fullNameLabel": "Full Name",
+    "title": "Join CodeCraft",
+    "subtitle": "Access your dashboard or create a new account",
+    "toggleToSignup": "Need an account? Sign up",
+    "toggleToLogin": "Already have an account? Sign in",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "nameLabel": "Full Name",
     "shopNameLabel": "Shop Name",
     "categoryLabel": "Business Category",
     "countryLabel": "Country",
     "cityLabel": "City",
-    "emailLabel": "Email Address",
-    "passwordLabel": "Password",
-    "signupAsLabel": "Sign up as a...",
-    "roleUser": "User",
-    "roleShopOwner": "Shop Owner",
-    "roleAffiliate": "Affiliate",
+    "roleLabel": "Account Type",
+    "loginButton": "Sign In",
+    "signupButton": "Create Account",
     "processing": "Processing...",
-    "loginButton": "Login",
-    "createAccountButton": "Create Account",
-    "dontHaveAccount": "Don't have an account?",
-    "alreadyHaveAccount": "Already have an account?",
-    "signUp": "Sign Up",
-    "login": "Login"
+    "referred": "You were referred by: {{referrer}}"
   },
-  "shopOwner": {
-    "dashboardTitle": "Shop Owner Dashboard",
-    "editProfile": "Edit Profile",
-    "stats": {
-      "creditBalance": "My Credit Balance",
-      "activeCoupons": "Active Coupons",
-      "referralCredits": "Referral Credits Earned",
-      "couponViews": "Coupon Views (Clicks)"
-    },
-    "createCoupon": {
-      "title": "Create New Coupon",
-      "couponTitle": "Coupon Title",
-      "description": "Description",
-      "discountType": "Discount Type",
-      "percentage": "Percentage (%)",
-      "fixedAmount": "Fixed Amount (EGP)",
-      "discountValue": "Discount Value",
-      "validityType": "Validity Type",
-      "expiryDate": "Expiry Date",
-      "validityDays": "Valid for (days)",
-      "maxUses": "Max Uses",
-      "affiliateCommission": "Affiliate Commission (Credits)",
-      "creating": "Creating...",
-      "createButton": "Create Coupon"
-    },
-    "referral": {
-      "title": "Your Referral Link",
-      "description": "Share this link with other shop owners. You'll get <strong>10,000 bonus credits</strong> after they redeem their first coupon!"
-    },
-    "myCoupons": "My Coupons",
-    "usesLeft": "Uses Left",
-    "viewPortal": "View Redemption Portal",
-    "shareCoupon": "Share Coupon",
-    "myReferrals": "My Referrals",
-    "referralsTable": {
-      "shopName": "Shop Name",
-      "status": "Status",
-      "signupDate": "Sign-up Date"
-    },
-    "noReferrals": "No referrals yet."
+  "dashboard": {
+    "welcome": "Welcome back",
+    "yourCredits": "Your Credits",
+    "totalCoupons": "Total Coupons",
+    "pendingRedemptions": "Pending Redemptions",
+    "createCoupon": "Create New Coupon",
+    "manageCoupons": "Manage Coupons",
+    "viewAnalytics": "View Analytics"
   },
-   "couponCard": {
-    "off": "Off",
-    "egpOff": "EGP Off",
-    "validUntil": "Valid until",
-    "expiresOn": "Expires on",
-    "noExpiry": "No expiry",
-    "usesLeft": "uses left",
-    "earn": "Earn",
-    "onRedeem": "on redeem",
-    "views": "Views",
-    "status": {
-      "active": "Active",
-      "inactive": "Inactive"
-    }
-  },
-  "publicCoupon": {
-    "forTheCustomer": {
-      "title": "For the Customer",
-      "description": "Show this page to the merchant to apply your discount. It's that simple!"
-    },
-    "forTheMerchant": {
-      "title": "For the Merchant",
-      "description": "Scan the QR code or click the button below to open the secure Redemption Portal and finalize the transaction.",
-      "button": "Open Redemption Portal"
-    }
-  },
-  "profilePage": {
-    "title": "Edit Shop Profile",
-    "subtitle": "Update your shop details that will be displayed in the marketplace.",
-    "shopDescriptionLabel": "Shop Description",
-    "categoryLabel": "Business Category (e.g., Cafe, Retail)",
-    "countryLabel": "Country",
-    "addressLine1Label": "Address Line 1",
-    "addressLine2Label": "Address Line 2",
-    "cityLabel": "City",
-    "stateLabel": "State / Province",
-    "postalCodeLabel": "Postal Code",
-    "updateButton": "Update Profile",
+  "couponForm": {
+    "title": "Create New Coupon",
+    "offerTitleLabel": "Offer Title",
+    "offerDescLabel": "Offer Description", 
+    "discountLabel": "Discount Amount",
+    "usageLimitLabel": "Usage Limit",
+    "affiliateCommissionLabel": "Affiliate Commission",
+    "customerRewardLabel": "Customer Reward Points",
+    "createButton": "Create Coupon",
     "updating": "Updating...",
-    "successMessage": "Profile updated successfully!"
+    "creating": "Creating..."
+  },
+  "validationPortal": {
+    "title": "Coupon Validation",
+    "validCoupon": "Valid Coupon Found",
+    "invalidCoupon": "Invalid or Expired Coupon",
+    "alreadyRedeemed": "You have already redeemed this coupon",
+    "redeemButton": "Redeem Now",
+    "usesLeft": "Uses Left",
+    "processing": "Processing redemption...",
+    "success": "Coupon redeemed successfully!",
+    "error": "Failed to redeem coupon",
+    "errors": {
+      "mustBeLoggedIn": "You must be logged in to redeem coupons"
+    }
   },
   "marketplace": {
-    "title": "Shop Marketplace",
-    "subtitle": "Discover other shops on the platform to partner with.",
-    "filter": {
-      "country": "Filter by country...",
-      "city": "Filter by city...",
-      "category": "Filter by category..."
-    },
-    "noResults": "No shops match the current filters."
+    "title": "Marketplace",
+    "subtitle": "Discover amazing deals from our verified partners",
+    "searchPlaceholder": "Search coupons...",
+    "allCategories": "All Categories",
+    "noResults": "No coupons found matching your criteria"
   },
-  "referralStatus": {
-    "pending": "Pending",
-    "rewarded": "Rewarded"
+  "profile": {
+    "title": "Profile Settings",
+    "personalInfo": "Personal Information",
+    "shopSettings": "Shop Settings",
+    "saveButton": "Save Changes",
+    "saving": "Saving..."
   },
   "affiliate": {
     "dashboardTitle": "Affiliate Dashboard",
@@ -224,7 +145,7 @@
         "title": "All Users",
         "name": "Name",
         "email": "Email",
-        "roles": "Roles",
+        "roles": "Roles", 
         "credits": "Credits",
         "actions": "Actions"
       },
@@ -246,58 +167,22 @@
   "roles": {
     "admin": "Admin",
     "shop-owner": "Shop Owner",
-    "affiliate": "Affiliate",
+    "affiliate": "Affiliate", 
     "user": "User"
   },
-  "creditLogTypes": {
-    "StandardSignup": "Standard Signup",
-    "ReferredSignup": "Referred Signup",
-    "ReferrerBonus": "Referrer Bonus",
-    "AffiliateCommission": "Affiliate Commission"
+  "referralStatus": {
+    "pending": "Pending",
+    "rewarded": "Rewarded"
   },
-  "user": {
-    "dashboardTitle": "Available Coupons",
-    "subtitle": "Explore coupons from all shops on the platform.",
-    "loadingCoupons": "Loading available coupons...",
-    "noCoupons": {
-      "title": "No Coupons Available Right Now",
-      "description": "Check back later for new offers from our network of shops."
+  "partnerPage": {
+    "hero": {
+      "title": "Partner With CodeCraft",
+      "subtitle": "Join our network and unlock new revenue streams through strategic partnerships"
     },
-    "viewCoupon": "View Coupon"
-  },
-  "validationPortal": {
-    "title": "Coupon Validation Portal",
-    "subtitle": "Verify and redeem coupons securely.",
-    "notFound": "Coupon not found.",
-    "loadError": "Failed to load coupon details.",
-    "description": "Description",
-    "createdBy": "Created by",
-    "usesLeft": "Uses Left",
-    "couponId": "Coupon ID",
-    "redeemButton": "Redeem & Finalize",
-    "processing": "Processing...",
-    "errors": {
-      "mustBeLoggedIn": "You must be logged in as a Shop Owner to redeem a coupon.",
-      "onlyShopOwners": "Only Shop Owners can redeem coupons.",
-      "cannotRedeemOwn": "You cannot redeem your own coupon."
-    }
-  },
-  "partner": {
-    "title": "Partner With CodeCraft",
-    "subtitle": "Join our growing network of shops and leverage the power of a shared B2B economy.",
-    "feature1": {
-      "title": "Zero Upfront Cost",
-      "description": "Get started with free credits. Earn more by referring other businesses. You only pay when our system works for you."
+    "benefits": {
+      "title": "Partnership Benefits",
+      "description": "Grow your business with our comprehensive partnership program"
     },
-    "feature2": {
-      "title": "Network Effect",
-      "description": "Tap into a marketplace of potential partners. Every new shop on the platform is a new opportunity for collaboration."
-    },
-    "ctaButton": "Become a Partner Today"
-  },
-  "affiliateNetwork": {
-    "title": "Join Our Affiliate Network",
-    "subtitle": "Monetize your audience by connecting businesses to the CodeCraft platform.",
     "whyJoin": {
       "title": "Why Join?",
       "description": "Earn credits and unlock rewards by bringing new shops into our ecosystem. We provide the tools, you drive the growth."
@@ -308,15 +193,15 @@
     "title": "Legal Information",
     "terms": {
       "title": "Terms of Service",
-      "description": "[Placeholder for Terms of Service content. By using our platform, you agree to our terms and conditions...]"
+      "description": "By using our platform, you agree to our terms and conditions. Please read carefully."
     },
     "privacy": {
-      "title": "Privacy Policy",
-      "description": "[Placeholder for Privacy Policy content. We respect your privacy and are committed to protecting your personal data...]"
+      "title": "Privacy Policy", 
+      "description": "We respect your privacy and are committed to protecting your personal data."
     },
     "cookies": {
       "title": "Cookie Policy",
-      "description": "[Placeholder for Cookie Policy content. We use cookies to enhance your experience, analyze site traffic, and for marketing purposes...]"
+      "description": "We use cookies to enhance your experience, analyze site traffic, and for marketing purposes."
     }
   },
   "cookies": {
