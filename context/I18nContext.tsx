@@ -1,8 +1,5 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-
-type Language = 'en' | 'ar';
-// Using any for translations to avoid circular dependency issues with deep key access
-type Translations = Record<string, any>;
+import { translations, type Language, type Translations } from '../locales/index';
 
 interface I18nContextType {
   language: Language;
@@ -17,7 +14,7 @@ export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [language, setLanguageState] = useState<Language>(
     (localStorage.getItem('language') as Language) || 'en'
   );
-  const [translations, setTranslations] = useState<Translations | null>(null);
+  const [currentTranslations, setCurrentTranslations] = useState<Translations | null>(null);
   const [loading, setLoading] = useState(true);
 
   const dir = language === 'ar' ? 'rtl' : 'ltr';
@@ -27,27 +24,22 @@ export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     document.documentElement.dir = dir;
     localStorage.setItem('language', language);
 
-    const fetchTranslations = async () => {
+    const loadTranslations = () => {
         setLoading(true);
         try {
-            const response = await fetch(`./locales/${language}.json`);
-            if (!response.ok) {
-                throw new Error(`Could not load ${language}.json`);
-            }
-            const data = await response.json();
-            setTranslations(data);
+            // Use statically imported translations
+            const data = translations[language] || translations.en;
+            setCurrentTranslations(data);
         } catch (error) {
-            console.error("Failed to fetch translations:", error);
-            // Fallback to English if current language fails
-            const response = await fetch(`./locales/en.json`);
-            const data = await response.json();
-            setTranslations(data);
+            console.error("Failed to load translations:", error);
+            // Fallback to English
+            setCurrentTranslations(translations.en);
         } finally {
             setLoading(false);
         }
     };
 
-    fetchTranslations();
+    loadTranslations();
   }, [language, dir]);
 
   const setLanguage = (lang: Language) => {
@@ -55,10 +47,10 @@ export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const t = useCallback((key: string, options?: Record<string, string | number>): string => {
-    if (!translations) return key;
+    if (!currentTranslations) return key;
 
     const keys = key.split('.');
-    let result: any = translations;
+    let result: any = currentTranslations;
     for (const k of keys) {
       result = result?.[k];
       if (result === undefined) {
@@ -73,7 +65,7 @@ export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     return result || key;
-  }, [translations]);
+  }, [currentTranslations]);
   
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading Translations...</div>
