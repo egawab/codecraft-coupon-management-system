@@ -109,29 +109,56 @@ const ValidationPortalPage: React.FC = () => {
             userEmail: user.email,
             userAccountName: user.name,
             
-            // Coupon Information
+            // Coupon Information  
             couponId: id,
-            couponTitle: coupon?.offerTitle || 'Unknown Coupon',
+            couponTitle: coupon?.title || 'Unknown Coupon', // Fixed: was offerTitle, should be title
             shopOwnerId: coupon?.shopOwnerId || 'unknown',
             shopOwnerName: coupon?.shopOwnerName || 'Unknown Shop',
-            discountAmount: coupon?.discountValue || 0,
+            discountType: coupon?.discountType || 'percentage',
+            discountValue: coupon?.discountValue || 0,
             
             // Redemption Context
             redeemedAt: new Date().toISOString(),
             redemptionLocation: window.location.href,
             affiliateId: affiliateId || null,
             redemptionIP: 'client-side', // Could be enhanced with IP detection
-            userAgent: navigator.userAgent
+            userAgent: navigator.userAgent,
+            
+            // Ensure we have all required fields for shop owner visibility
+            customerRewardPoints: coupon?.customerRewardPoints || 0,
+            affiliateCommission: coupon?.affiliateCommission || 0
         };
         
         // Call the secure API endpoint which triggers the Cloud Function
+        console.log('🚀 Submitting redemption with customer data:', customerData);
+        console.log('🎯 Target shop ID:', coupon?.shopOwnerId);
+        
         const result = await api.redeemCouponWithCustomerData(id, affiliateId, user.id, customerData);
+        console.log('📊 Redemption result:', result);
+        
         setRedeemMessage(result.message);
 
         if(result.success) {
+            console.log('✅ Redemption successful, sending notifications...');
+            
             // Send customer data to admin and shop owner via email/notification
-            await api.notifyAdminAndShopOwner(customerData);
-            setTimeout(() => navigate('/dashboard'), 2000);
+            try {
+                await api.notifyAdminAndShopOwner(customerData);
+                console.log('✅ Notifications sent successfully');
+            } catch (notifyError) {
+                console.error('⚠️ Notification failed but redemption was successful:', notifyError);
+            }
+            
+            // Add success feedback
+            setRedeemMessage('✅ Coupon redeemed successfully! Customer data has been recorded.');
+            
+            // Delay navigation to show success message
+            setTimeout(() => {
+                console.log('🏠 Navigating to dashboard...');
+                navigate('/dashboard');
+            }, 3000);
+        } else {
+            console.error('❌ Redemption failed:', result.message);
         }
         setIsRedeeming(false);
         setIsSubmittingData(false);

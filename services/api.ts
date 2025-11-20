@@ -128,63 +128,120 @@ export const api = {
         }
     },
 
-    // NEW: Get all customer data from redemptions for this shop
+    // Get all customer data from redemptions for this shop
     getCustomerDataForShop: async (shopId: string): Promise<any[]> => {
         try {
             console.log('🔍 Fetching customer data for shop:', shopId);
             
-            // Get detailed customer redemptions (primary source)
-            const detailedCollection = collection(db, "detailedCustomerRedemptions");
-            const q1 = query(detailedCollection, where("shopOwnerId", "==", shopId), orderBy("timestamp", "desc"));
-            const snapshot1 = await getDocs(q1);
-            const detailedRedemptions = snapshot1.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                source: 'detailed',
-                redeemedAt: doc.data().timestamp?.toDate?.() || doc.data().redeemedAt?.toDate?.() || new Date(doc.data().timestamp || Date.now())
-            }));
-
-            // Get standard redemptions with customer data
-            const redemptionsCollection = collection(db, "redemptions");
-            const q2 = query(redemptionsCollection, where("shopOwnerId", "==", shopId), orderBy("redeemedAt", "desc"));
-            const snapshot2 = await getDocs(q2);
-            const standardRedemptions = snapshot2.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                source: 'standard',
-                redeemedAt: doc.data().redeemedAt?.toDate?.() || new Date(doc.data().redeemedAt || Date.now())
-            })).filter(redemption => 
-                // Only include redemptions that have customer data
-                redemption.customerName || redemption.customerPhone || redemption.customerEmail
-            );
-
-            // Get legacy customer redemptions
-            const customerRedemptionsCollection = collection(db, "customerRedemptions");
-            const q3 = query(customerRedemptionsCollection, where("shopOwnerId", "==", shopId), orderBy("redeemedAt", "desc"));
-            const snapshot3 = await getDocs(q3);
-            const legacyRedemptions = snapshot3.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                source: 'legacy',
-                redeemedAt: doc.data().redeemedAt?.toDate?.() || new Date(doc.data().redeemedAt || Date.now())
-            }));
-
-            // Combine all sources and remove duplicates
-            const allCustomerData = [...detailedRedemptions, ...standardRedemptions, ...legacyRedemptions];
+            let allCustomerData: any[] = [];
             
-            // Remove duplicates based on couponId + customerId combination
-            const uniqueRedemptions = allCustomerData.reduce((unique, redemption) => {
-                const key = `${redemption.couponId}-${redemption.userId || redemption.customerId}`;
-                if (!unique.find(item => `${item.couponId}-${item.userId || item.customerId}` === key)) {
-                    unique.push(redemption);
+            // 1. Get customer data from shopCustomerData collection (primary source)
+            try {
+                const shopCustomerDataCollection = collection(db, "shopCustomerData");
+                const q = query(
+                    shopCustomerDataCollection, 
+                    where("shopOwnerId", "==", shopId),
+                    orderBy("timestamp", "desc")
+                );
+                
+                const snapshot = await getDocs(q);
+                const customerData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    source: 'shopCustomerData',
+                    redeemedAt: doc.data().timestamp?.toDate?.() || doc.data().redeemedAt?.toDate?.() || doc.data().createdAt?.toDate?.() || new Date()
+                }));
+                
+                console.log(`📊 Found ${customerData.length} customer records in shopCustomerData for shop ${shopId}`);
+                allCustomerData = [...customerData];
+            } catch (orderError) {
+                console.log('⚠️ Timestamp ordering failed, trying createdAt ordering...');
+                try {
+                    const shopCustomerDataCollection = collection(db, "shopCustomerData");
+                    const q = query(
+                        shopCustomerDataCollection, 
+                        where("shopOwnerId", "==", shopId),
+                        orderBy("createdAt", "desc")
+                    );
+                    
+                    const snapshot = await getDocs(q);
+                    const customerData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        source: 'shopCustomerData',
+                        redeemedAt: doc.data().timestamp?.toDate?.() || doc.data().redeemedAt?.toDate?.() || doc.data().createdAt?.toDate?.() || new Date()
+                    }));
+                    
+                    console.log(`📊 Found ${customerData.length} customer records in shopCustomerData (via createdAt) for shop ${shopId}`);
+                    allCustomerData = [...customerData];
+                } catch (createdAtError) {
+                    console.log('⚠️ CreatedAt ordering also failed, fetching without ordering...');
+                    const shopCustomerDataCollection = collection(db, "shopCustomerData");
+                    const q = query(shopCustomerDataCollection, where("shopOwnerId", "==", shopId));
+                    
+                    const snapshot = await getDocs(q);
+                    const customerData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        source: 'shopCustomerData',
+                        redeemedAt: doc.data().timestamp?.toDate?.() || doc.data().redeemedAt?.toDate?.() || doc.data().createdAt?.toDate?.() || new Date()
+                    }));
+                    
+                    console.log(`📊 Found ${customerData.length} customer records in shopCustomerData (no ordering) for shop ${shopId}`);
+                    allCustomerData = [...customerData];
                 }
-                return unique;
-            }, [] as any[]);
-
-            console.log(`✅ Found ${uniqueRedemptions.length} customer redemptions for shop ${shopId}`);
-            return uniqueRedemptions.sort((a, b) => 
-                new Date(b.redeemedAt).getTime() - new Date(a.redeemedAt).getTime()
-            );
+            }
+            
+            // 2. Also check redemptions collection for additional customer data
+            try {
+                console.log('📋 Also checking redemptions collection for additional customer data...');
+                
+                const redemptionsCollection = collection(db, "redemptions");
+                const redemptionQuery = query(redemptionsCollection, where("shopOwnerId", "==", shopId));
+                const redemptionSnapshot = await getDocs(redemptionQuery);
+                
+                const redemptionData = redemptionSnapshot.docs
+                    .map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        source: 'redemptions',
+                        redeemedAt: doc.data().redeemedAt?.toDate?.() || new Date()
+                    }))
+                    .filter(redemption => redemption.customerName || redemption.customerPhone || redemption.customerEmail);
+                
+                console.log(`📊 Found ${redemptionData.length} redemptions with customer data`);
+                
+                // Merge with existing data (avoid duplicates based on couponId + userId)
+                const existingKeys = new Set(allCustomerData.map(item => `${item.couponId}-${item.userId}`));
+                const newRedemptionData = redemptionData.filter(item => 
+                    !existingKeys.has(`${item.couponId}-${item.userId}`)
+                );
+                
+                allCustomerData = [...allCustomerData, ...newRedemptionData];
+                console.log(`📊 Total customer records after merging: ${allCustomerData.length}`);
+            } catch (redemptionError) {
+                console.error('❌ Error fetching from redemptions collection:', redemptionError);
+            }
+            
+            // 3. Sort all data by redemption date (newest first)
+            allCustomerData.sort((a, b) => {
+                const dateA = new Date(a.redeemedAt).getTime();
+                const dateB = new Date(b.redeemedAt).getTime();
+                return dateB - dateA;
+            });
+            
+            console.log(`✅ Returning ${allCustomerData.length} total customer records for shop ${shopId}`);
+            
+            // Log sample data for debugging if we have records
+            if (allCustomerData.length > 0) {
+                console.log('📝 Sample customer data:', {
+                    sampleRecord: allCustomerData[0],
+                    totalRecords: allCustomerData.length,
+                    sources: [...new Set(allCustomerData.map(item => item.source))]
+                });
+            }
+            
+            return allCustomerData;
         } catch (error) {
             console.error('❌ Error fetching customer data for shop:', error);
             return [];
@@ -467,6 +524,8 @@ export const api = {
 
     redeemCouponWithCustomerData: async (couponId: string, affiliateId?: string | null, customerId?: string, customerData?: any): Promise<{ success: boolean; message: string }> => {
         try {
+            console.log('🔄 Processing customer redemption with data:', { couponId, affiliateId, customerId, hasCustomerData: !!customerData });
+            
             // Get coupon data first to extract shop information
             const couponRef = doc(db, "coupons", couponId);
             const couponSnap = await getDoc(couponRef);
@@ -476,13 +535,16 @@ export const api = {
             }
             
             const couponData = couponSnap.data();
+            console.log('📋 Coupon data retrieved:', { shopOwnerId: couponData.shopOwnerId, title: couponData.title });
             
             // First redeem the coupon normally
             const result = await api.redeemCoupon(couponId, affiliateId, customerId);
             
             if (result.success && customerData) {
+                console.log('✅ Standard redemption successful, now storing customer data...');
+                
                 // Get affiliate information if exists
-                let affiliateName = 'Direct Customer';
+                let affiliateName = null;
                 if (affiliateId) {
                     try {
                         const affiliateRef = doc(db, "shops", affiliateId);
@@ -495,74 +557,133 @@ export const api = {
                     }
                 }
 
-                // Store comprehensive customer data in MULTIPLE collections for complete visibility
+                // Create comprehensive customer data for Shop Owner dashboard
                 const timestamp = serverTimestamp();
+                const currentTime = new Date().toISOString();
                 const comprehensiveCustomerData = {
                     // Core redemption info
                     couponId,
-                    couponTitle: couponData.title || 'Unknown Coupon',
+                    couponTitle: couponData.title || customerData.couponTitle || 'Unknown Coupon',
                     shopOwnerId: couponData.shopOwnerId,
                     shopOwnerName: couponData.shopOwnerName || 'Unknown Shop',
                     
-                    // Customer details - NEVER use placeholders
+                    // Customer details - ensure all fields are captured
                     userId: customerId,
-                    customerName: customerData.name?.trim() || null,
-                    customerPhone: customerData.phone?.trim() || null,
-                    customerEmail: customerData.email?.trim() || customerData.userEmail || null,
-                    customerAddress: customerData.address?.trim() || null,
-                    customerAge: customerData.age || null,
-                    customerGender: customerData.gender || null,
+                    customerName: customerData.name?.trim() || customerData.customerName?.trim() || null,
+                    customerPhone: customerData.phone?.trim() || customerData.customerPhone?.trim() || null,
+                    customerEmail: customerData.email?.trim() || customerData.customerEmail?.trim() || customerData.userEmail || null,
+                    customerAddress: customerData.address?.trim() || customerData.customerAddress?.trim() || null,
+                    customerAge: customerData.age || customerData.customerAge || null,
+                    customerGender: customerData.gender || customerData.customerGender || null,
+                    
+                    // User account details
+                    userEmail: customerData.userEmail || customerData.email,
+                    userAccountName: customerData.userAccountName || customerData.name,
                     
                     // Affiliate info
                     affiliateId: affiliateId || null,
-                    affiliateName: affiliateId ? affiliateName : null,
+                    affiliateName: affiliateName,
                     
                     // Financial data
-                    discountType: couponData.discountType,
-                    discountValue: couponData.discountValue,
-                    commissionEarned: affiliateId ? couponData.affiliateCommission || 0 : 0,
-                    customerRewardPoints: couponData.customerRewardPoints || 0,
+                    discountType: couponData.discountType || customerData.discountType || 'percentage',
+                    discountValue: couponData.discountValue || customerData.discountValue || 0,
+                    commissionEarned: affiliateId ? (couponData.affiliateCommission || customerData.affiliateCommission || 0) : 0,
+                    customerRewardPoints: couponData.customerRewardPoints || customerData.customerRewardPoints || 0,
                     
-                    // Timestamps
+                    // Additional context
+                    redemptionLocation: customerData.redemptionLocation || window?.location?.href || 'Unknown',
+                    userAgent: customerData.userAgent || 'Unknown',
+                    
+                    // Timestamps - use both for compatibility
                     redeemedAt: timestamp,
-                    timestamp: timestamp
+                    timestamp: timestamp,
+                    createdAt: timestamp,
+                    
+                    // Additional tracking fields
+                    dataSource: 'customer_form_submission',
+                    isVerifiedCustomer: !!(customerData.name && customerData.phone), // Has required info
+                    hasCompleteProfile: !!(customerData.name && customerData.phone && customerData.email && customerData.address)
                 };
 
-                // Store in redemptions collection (for main tracking)
-                const redemptionsUpdateRef = collection(db, "redemptions");
-                const redemptionQuery = query(
-                    redemptionsUpdateRef, 
-                    where("couponId", "==", couponId),
-                    where("customerId", "==", customerId),
-                    limit(1)
-                );
-                const existingRedemption = await getDocs(redemptionQuery);
-                
-                if (!existingRedemption.empty) {
-                    // Update existing redemption with customer data
-                    const redemptionDocRef = existingRedemption.docs[0].ref;
-                    await updateDoc(redemptionDocRef, {
-                        customerName: comprehensiveCustomerData.customerName,
-                        customerPhone: comprehensiveCustomerData.customerPhone,
-                        customerEmail: comprehensiveCustomerData.customerEmail,
-                        customerAddress: comprehensiveCustomerData.customerAddress,
-                        customerAge: comprehensiveCustomerData.customerAge,
-                        customerGender: comprehensiveCustomerData.customerGender,
-                        affiliateName: comprehensiveCustomerData.affiliateName,
-                        discountType: comprehensiveCustomerData.discountType,
-                        discountValue: comprehensiveCustomerData.discountValue
+                console.log('📝 Storing customer data for shop owner dashboard:', comprehensiveCustomerData);
+
+                try {
+                    console.log('💾 Starting customer data storage process...');
+                    console.log('📋 Data to store:', JSON.stringify(comprehensiveCustomerData, null, 2));
+
+                    // 1. Store in shopCustomerData collection for Shop Owner dashboard
+                    const shopCustomerDataRef = collection(db, "shopCustomerData");
+                    const customerDocRef = await addDoc(shopCustomerDataRef, comprehensiveCustomerData);
+                    console.log('✅ Stored customer data in shopCustomerData collection with ID:', customerDocRef.id);
+
+                    // 2. Also update the redemption record with customer data for complete tracking
+                    console.log('🔄 Updating redemption record with customer data...');
+                    const redemptionsCollection = collection(db, "redemptions");
+                    const redemptionQuery = query(
+                        redemptionsCollection, 
+                        where("couponId", "==", couponId),
+                        where("customerId", "==", customerId),
+                        limit(1)
+                    );
+                    const existingRedemption = await getDocs(redemptionQuery);
+                    
+                    if (!existingRedemption.empty) {
+                        const redemptionDocRef = existingRedemption.docs[0].ref;
+                        const redemptionUpdateData = {
+                            customerName: comprehensiveCustomerData.customerName,
+                            customerPhone: comprehensiveCustomerData.customerPhone,
+                            customerEmail: comprehensiveCustomerData.customerEmail,
+                            customerAddress: comprehensiveCustomerData.customerAddress,
+                            customerAge: comprehensiveCustomerData.customerAge,
+                            customerGender: comprehensiveCustomerData.customerGender,
+                            affiliateName: comprehensiveCustomerData.affiliateName,
+                            discountType: comprehensiveCustomerData.discountType,
+                            discountValue: comprehensiveCustomerData.discountValue,
+                            shopOwnerName: comprehensiveCustomerData.shopOwnerName,
+                            couponTitle: comprehensiveCustomerData.couponTitle,
+                            isVerifiedCustomer: comprehensiveCustomerData.isVerifiedCustomer,
+                            hasCompleteProfile: comprehensiveCustomerData.hasCompleteProfile,
+                            dataSource: comprehensiveCustomerData.dataSource
+                        };
+                        
+                        await updateDoc(redemptionDocRef, redemptionUpdateData);
+                        console.log('✅ Updated redemption record with customer data:', redemptionDocRef.id);
+                    } else {
+                        console.log('⚠️ No matching redemption record found to update');
+                    }
+
+                    // 3. Verify the data was stored successfully
+                    console.log('🔍 Verifying customer data storage...');
+                    const verificationQuery = query(
+                        shopCustomerDataRef,
+                        where("shopOwnerId", "==", couponData.shopOwnerId),
+                        where("couponId", "==", couponId),
+                        where("userId", "==", customerId),
+                        limit(1)
+                    );
+                    const verificationSnapshot = await getDocs(verificationQuery);
+                    
+                    if (!verificationSnapshot.empty) {
+                        console.log('✅ Customer data storage verified successfully!');
+                        console.log('📊 Stored record ID:', verificationSnapshot.docs[0].id);
+                        console.log('📋 Verification data:', verificationSnapshot.docs[0].data());
+                    } else {
+                        console.log('❌ Customer data verification failed - record not found!');
+                    }
+
+                    console.log('🎉 Customer data successfully stored - will appear in Shop Owner dashboard');
+                    
+                } catch (storageError) {
+                    console.error('❌ Failed to store customer data:', storageError);
+                    console.error('❌ Storage error details:', {
+                        message: storageError.message,
+                        code: storageError.code,
+                        stack: storageError.stack
                     });
+                    
+                    // Don't fail the entire redemption - log the error but continue
+                    console.log('⚠️ Continuing with redemption despite storage error');
                 }
-
-                // Store in detailed customer redemptions (for shop owner dashboard)
-                const detailedCustomerRedemptionsRef = collection(db, "detailedCustomerRedemptions");
-                await addDoc(detailedCustomerRedemptionsRef, comprehensiveCustomerData);
-
-                // Store in customer redemptions (legacy support)
-                const customerRedemptionsRef = collection(db, "customerRedemptions");
-                await addDoc(customerRedemptionsRef, comprehensiveCustomerData);
-
-                console.log('✅ Customer data stored successfully in multiple collections');
             }
             
             return result;

@@ -228,6 +228,17 @@ const ShopOwnerDashboard: React.FC = () => {
             setCouponRedemptions(redemptions);
             setAffiliateActivity(affiliates);
             setCustomerData(customers);
+            
+            // DEBUG: Log what we're actually getting
+            console.log('🔍 Shop Owner Dashboard Data for shop:', user.id);
+            console.log('- Coupons:', shopCoupons.length);
+            console.log('- Redemptions:', redemptions.length);
+            console.log('- Customer Data:', customers.length);
+            if (customers.length > 0) {
+                console.log('- Customer Data Sample:', customers.slice(0, 2));
+            } else {
+                console.log('- No customer data found - check if customers are redeeming coupons with data collection enabled');
+            }
             // Filter to show only unused keys
             setAvailableKeys(shopCreditKeys.filter(key => !key.isUsed && new Date(key.expiresAt) > new Date()));
         }
@@ -692,8 +703,33 @@ const ShopOwnerDashboard: React.FC = () => {
                 <div className="space-y-6">
                     <div className="bg-white rounded-xl shadow-lg border overflow-hidden">
                         <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 border-b">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-2">👥 Customer Database</h2>
-                            <p className="text-gray-600">Complete customer information from all coupon redemptions</p>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-800 mb-2">👥 Customer Database</h2>
+                                    <p className="text-gray-600">Complete customer information from all coupon redemptions</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={fetchData}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center gap-2"
+                                    >
+                                        🔄 Refresh Data
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            console.log('🔍 Manual Debug - Shop ID:', user.id);
+                                            console.log('🔍 Manual Debug - Current Customer Data:', customerData);
+                                            console.log('🔍 Manual Debug - Current Redemptions:', couponRedemptions);
+                                            api.getCustomerDataForShop(user.id).then(data => {
+                                                console.log('🔍 Manual Debug - Fresh Customer Data:', data);
+                                            });
+                                        }}
+                                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all font-medium flex items-center gap-2"
+                                    >
+                                        🔧 Debug
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         
                         <div className="overflow-x-auto">
@@ -795,8 +831,26 @@ const ShopOwnerDashboard: React.FC = () => {
                                 </tbody>
                             </table>
                             {customerData.length === 0 && (
-                                <div className="text-center py-8 text-gray-500">
-                                    No customer data yet
+                                <div className="text-center py-12 bg-blue-50 border border-blue-200 rounded-lg mx-6 mb-6">
+                                    <div className="text-blue-800 font-bold text-lg mb-3">👥 No Customer Data Yet</div>
+                                    <div className="text-sm text-gray-700 space-y-2 max-w-md mx-auto">
+                                        <p><strong>Customer information will appear here when:</strong></p>
+                                        <div className="text-left space-y-1">
+                                            <p>✓ Customers redeem your coupons</p>
+                                            <p>✓ They provide their contact details during redemption</p>
+                                            <p>✓ The redemption process completes successfully</p>
+                                        </div>
+                                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                            <p className="text-green-800 text-xs font-medium">
+                                                💡 Create and share coupons to start collecting customer data!
+                                            </p>
+                                        </div>
+                                        <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+                                            <p className="text-gray-600 text-xs">
+                                                Debug: Redemptions={couponRedemptions.length} | Customer Records={customerData.length}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
