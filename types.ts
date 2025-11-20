@@ -51,12 +51,37 @@ export interface CreateCouponData {
   discountType: 'percentage' | 'fixed';
   discountValue: number;
   validityType: 'expiryDate' | 'days';
+  /** 
+   * Required when validityType is 'expiryDate'. 
+   * Must be a valid ISO date string in the future.
+   * Will be undefined when validityType is 'days'.
+   */
   expiryDate?: string;
+  /** 
+   * Required when validityType is 'days'. 
+   * Must be a positive integer representing number of days.
+   * Will be undefined when validityType is 'expiryDate'.
+   */
   validityDays?: number;
   affiliateCommission: number;
   customerRewardPoints: number;
   creationCost?: number; // Cost to create this coupon
 }
+
+/**
+ * Conditional type that ensures proper validity fields based on validityType
+ */
+export type ValidatedCouponData = 
+  | (Omit<CreateCouponData, 'validityType' | 'validityDays' | 'expiryDate'> & {
+      validityType: 'expiryDate';
+      expiryDate: string;
+      validityDays?: never;
+    })
+  | (Omit<CreateCouponData, 'validityType' | 'validityDays' | 'expiryDate'> & {
+      validityType: 'days';
+      validityDays: number;
+      expiryDate?: never;
+    });
 
 // Credit Request System
 export interface CreditRequest {

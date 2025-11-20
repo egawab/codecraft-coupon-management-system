@@ -19,6 +19,8 @@ import {
     limit,
 } from 'firebase/firestore';
 import { Shop, Coupon, Redemption, Referral, AdminCreditLog, CreateCouponData, Role, CreditRequest, CreditKey } from '../types';
+import { sanitizeCouponData, validateCouponData, removeUndefinedFields } from '../utils/couponDataSanitizer';
+import { prepareCouponForFirebase } from '../utils/firebaseDataValidator';
 
 const fromFirestore = (doc: any) => {
     const data = doc.data();
@@ -96,6 +98,15 @@ export const api = {
         // Fixed cost: 50 credits per coupon
         const couponCost = 50;
 
+        // Validate and sanitize coupon data first
+        const validation = validateCouponData(data);
+        if (!validation.isValid) {
+            throw new Error(`Invalid coupon data: ${validation.errors.join(', ')}`);
+        }
+
+        // Sanitize the data to remove undefined values and apply defaults
+        const sanitizedData = sanitizeCouponData(data) as CreateCouponData;
+
         // Check if shop owner has enough credits
         if (shopOwner.credits < couponCost) {
             throw new Error(`Insufficient credits. Need ${couponCost} credits to create a coupon but you have ${shopOwner.credits}. Please request more credits.`);
@@ -119,27 +130,31 @@ export const api = {
                 shopName: shopOwner.name,
                 amount: -couponCost,
                 timestamp: serverTimestamp(),
-                details: `Created coupon: ${data.title} (50 credits deducted)`
+                details: `Created coupon: ${sanitizedData.title} (50 credits deducted)`
             });
 
-            // Create the coupon
-            const newCouponData = {
-                ...data,
+            // Create the coupon with sanitized data - guaranteed no undefined values
+            const rawCouponData = {
+                ...sanitizedData,
                 shopOwnerName: shopOwner.name,
-                usesLeft: data.maxUses,
+                usesLeft: sanitizedData.maxUses,
                 clicks: 0,
                 creationCost: couponCost,
                 createdAt: serverTimestamp(),
-                expiryDate: data.expiryDate ? Timestamp.fromDate(new Date(data.expiryDate)) : null,
+                expiryDate: sanitizedData.expiryDate ? Timestamp.fromDate(new Date(sanitizedData.expiryDate)) : null,
             };
+            
+            // FINAL SAFETY CHECK: Validate data before sending to Firebase
+            const newCouponData = prepareCouponForFirebase(rawCouponData, 'Coupon Creation');
+            
             const couponsCollection = collection(db, "coupons");
             const newDocRef = doc(couponsCollection);
             transaction.set(newDocRef, newCouponData);
             
             return { 
-                ...data, 
+                ...sanitizedData, 
                 id: newDocRef.id, 
-                usesLeft: data.maxUses, 
+                usesLeft: sanitizedData.maxUses, 
                 shopOwnerName: shopOwner.name, 
                 createdAt: new Date().toISOString(), 
                 clicks: 0,

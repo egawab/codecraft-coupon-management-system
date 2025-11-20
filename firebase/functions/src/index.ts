@@ -127,6 +127,18 @@ export const redeemCouponCallable = functions.https.onCall(
           }
         }
 
+        // Additional validation for days-based validity
+        if (couponData.validityType === "days" && couponData.validityDays) {
+          const createdAt = couponData.createdAt?.toDate ? couponData.createdAt.toDate() : new Date();
+          const expiryDate = new Date(createdAt.getTime() + couponData.validityDays * 24 * 60 * 60 * 1000);
+          if (expiryDate < new Date()) {
+            throw new functions.https.HttpsError(
+              "failed-precondition",
+              "This coupon has expired."
+            );
+          }
+        }
+
         // Step 3: All Writes
         transaction.update(couponRef, {
           usesLeft: admin.firestore.FieldValue.increment(-1),

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { Coupon, Referral, CreateCouponData, CreditRequest, CreditKey } from '../types';
+import { sanitizeCouponData, validateCouponData, prepareCouponData } from '../utils/couponDataSanitizer';
 import { useAuth } from '../hooks/useAuth';
 import StatCard from '../components/StatCard';
 import { TicketIcon, GiftIcon, BanknotesIcon, EyeIcon, CreditCardIcon, KeyIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
@@ -33,10 +34,11 @@ const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponC
         setIsSubmitting(true);
         setError('');
         try {
-            const newCouponData: CreateCouponData = {
+            // Prepare coupon data with proper sanitization - this prevents undefined values
+            const rawCouponData: Partial<CreateCouponData> = {
                 shopOwnerId: user.id,
-                title,
-                description,
+                title: title.trim(),
+                description: description.trim(),
                 maxUses,
                 discountType,
                 discountValue,
@@ -46,6 +48,14 @@ const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponC
                 affiliateCommission,
                 customerRewardPoints
             };
+
+            // Validate and sanitize the data to ensure no undefined fields
+            const validation = validateCouponData(rawCouponData as CreateCouponData);
+            if (!validation.isValid) {
+                throw new Error(validation.errors.join(', '));
+            }
+
+            const newCouponData = prepareCouponData(rawCouponData);
             await api.createCoupon(newCouponData, user);
             onCouponCreated();
             // Reset form
