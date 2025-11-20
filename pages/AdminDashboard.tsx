@@ -462,20 +462,146 @@ const AdminDashboard: React.FC = () => {
         ))
     );
 
-    const redemptionsContent = renderTable(
-        'Redemptions',
-        ['Date', 'Coupon', 'Shop Owner', 'Affiliate', 'Commission'],
-        redemptions.map((record) => (
-            <tr key={record.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 text-xs text-gray-500">
-                    {record.redeemedAt ? new Date(record.redeemedAt).toLocaleString() : '--'}
-                </td>
-                <td className="px-4 py-3 font-medium text-dark-gray">{record.couponTitle}</td>
-                <td className="px-4 py-3">{record.shopOwnerId}</td>
-                <td className="px-4 py-3">{record.affiliateId || 'N/A'}</td>
-                <td className="px-4 py-3">{record.commissionEarned ? `+${record.commissionEarned}` : '--'}</td>
-            </tr>
-        ))
+    const redemptionsContent = (
+        <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-lg border overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">🎫 Complete Redemption Chain Analysis</h2>
+                    <p className="text-gray-600">Full visibility into every redemption: Shop Owner → Affiliate → Customer with complete details</p>
+                </div>
+                
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead className="bg-gray-50 text-xs text-gray-700 uppercase">
+                            <tr>
+                                <th className="px-6 py-3 text-left">Date & Time</th>
+                                <th className="px-6 py-3 text-left">Complete Chain</th>
+                                <th className="px-6 py-3 text-left">Coupon Details</th>
+                                <th className="px-6 py-3 text-left">Customer Information</th>
+                                <th className="px-6 py-3 text-left">Financial Flow</th>
+                                <th className="px-6 py-3 text-left">System Impact</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {redemptions.map((record) => (
+                                <tr key={record.id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4">
+                                        <div className="text-sm text-gray-900">
+                                            {record.redeemedAt ? new Date(record.redeemedAt).toLocaleDateString() : '--'}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            {record.redeemedAt ? new Date(record.redeemedAt).toLocaleTimeString() : '--'}
+                                        </div>
+                                        <div className="text-xs text-blue-600 mt-1">
+                                            ID: {record.id?.slice(0, 8)}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></span>
+                                                <span className="text-sm font-medium text-gray-800">🏪 {record.shopOwnerName || 'Unknown Shop'}</span>
+                                            </div>
+                                            <div className="ml-5 border-l-2 border-gray-200 pl-3">
+                                                {record.affiliateId ? (
+                                                    <>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-3 h-3 bg-blue-500 rounded-full flex-shrink-0"></span>
+                                                            <span className="text-sm font-medium text-blue-700">📈 {record.affiliateName || 'Affiliate Partner'}</span>
+                                                        </div>
+                                                        <div className="ml-5 border-l-2 border-gray-200 pl-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-3 h-3 bg-orange-500 rounded-full flex-shrink-0"></span>
+                                                                <span className="text-sm font-medium text-orange-700">👤 {record.customerName || 'Customer'}</span>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-3 h-3 bg-orange-500 rounded-full flex-shrink-0"></span>
+                                                        <span className="text-sm font-medium text-orange-700">👤 {record.customerName || 'Direct Customer'}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="mt-2">
+                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                    record.affiliateId ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                                                }`}>
+                                                    {record.affiliateId ? 'Via Affiliate Network' : 'Direct Customer'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="space-y-1">
+                                            <div className="text-sm font-medium text-gray-900">{record.couponTitle || 'Unknown Coupon'}</div>
+                                            <div className="text-xs text-gray-500">Coupon ID: {record.couponId?.slice(0, 8)}</div>
+                                            <div className="text-xs text-blue-600">
+                                                {record.discountType === 'percentage' ? `${record.discountValue}% OFF` : `$${record.discountValue} OFF`}
+                                            </div>
+                                            <div className="text-xs text-gray-600">
+                                                Shop: {record.shopOwnerName || 'Unknown'}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="space-y-1">
+                                            <div className="text-sm font-medium text-gray-900">{record.customerName || 'Anonymous'}</div>
+                                            <div className="text-xs text-gray-700">📞 {record.customerPhone || 'No phone'}</div>
+                                            <div className="text-xs text-gray-700">✉️ {record.customerEmail || 'No email'}</div>
+                                            {record.customerAddress && (
+                                                <div className="text-xs text-gray-600">📍 {record.customerAddress}</div>
+                                            )}
+                                            {record.customerAge && (
+                                                <div className="text-xs text-gray-600">👤 {record.customerAge}y, {record.customerGender || 'N/A'}</div>
+                                            )}
+                                            <div className="text-xs text-blue-600">User ID: {record.userId?.slice(0, 8)}</div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="space-y-1">
+                                            <div className="text-sm font-medium text-green-600">
+                                                💰 Commission: {record.commissionEarned ? `${record.commissionEarned} credits` : 'None'}
+                                            </div>
+                                            <div className="text-xs text-blue-600">
+                                                🎁 Customer Points: {record.customerRewardPoints || 0}
+                                            </div>
+                                            <div className="text-xs text-gray-600">
+                                                💳 Shop Revenue: {record.affiliateId ? `Less ${record.commissionEarned || 0} commission` : 'Full retention'}
+                                            </div>
+                                            <div className="text-xs text-purple-600">
+                                                📊 Net Cost: {record.affiliateId ? `${record.commissionEarned || 0} credits` : 'Free acquisition'}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="space-y-1">
+                                            <div className="text-xs text-gray-600">
+                                                🎯 Acquisition: {record.affiliateId ? 'Affiliate-driven' : 'Organic'}
+                                            </div>
+                                            <div className="text-xs text-blue-600">
+                                                📈 Network Value: {record.affiliateId ? 'High' : 'Direct'}
+                                            </div>
+                                            <div className="text-xs text-green-600">
+                                                ✅ Status: Completed
+                                            </div>
+                                            <div className="text-xs text-purple-600">
+                                                🔗 Chain Length: {record.affiliateId ? '3 parties' : '2 parties'}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {redemptions.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                            No redemptions yet
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
     );
 
     const referralsContent = renderTable(

@@ -524,11 +524,11 @@ const ShopOwnerDashboard: React.FC = () => {
                                 <thead className="bg-gray-50 text-xs text-gray-700 uppercase">
                                     <tr>
                                         <th className="px-6 py-3 text-left">Date & Time</th>
-                                        <th className="px-6 py-3 text-left">Coupon</th>
-                                        <th className="px-6 py-3 text-left">Customer Details</th>
-                                        <th className="px-6 py-3 text-left">Source</th>
-                                        <th className="px-6 py-3 text-left">Affiliate</th>
-                                        <th className="px-6 py-3 text-left">Commission Paid</th>
+                                        <th className="px-6 py-3 text-left">Coupon Details</th>
+                                        <th className="px-6 py-3 text-left">Complete Customer Info</th>
+                                        <th className="px-6 py-3 text-left">Redemption Chain</th>
+                                        <th className="px-6 py-3 text-left">Affiliate Partner</th>
+                                        <th className="px-6 py-3 text-left">Financial Impact</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
@@ -545,32 +545,74 @@ const ShopOwnerDashboard: React.FC = () => {
                                             <td className="px-6 py-4">
                                                 <div className="text-sm font-medium text-gray-900">{redemption.couponTitle}</div>
                                                 <div className="text-xs text-gray-500">ID: {redemption.couponId?.slice(0, 8)}</div>
+                                                <div className="text-xs text-blue-600">
+                                                    {redemption.discountType === 'percentage' ? `${redemption.discountValue}% OFF` : `$${redemption.discountValue} OFF`}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="text-sm text-gray-900">{redemption.customerName || 'N/A'}</div>
-                                                <div className="text-xs text-gray-500">{redemption.customerPhone || 'N/A'}</div>
-                                                <div className="text-xs text-gray-500">{redemption.customerEmail || 'N/A'}</div>
+                                                <div className="text-sm font-medium text-gray-900">{redemption.customerName || 'Anonymous Customer'}</div>
+                                                <div className="text-xs text-gray-700">📞 {redemption.customerPhone || 'No phone'}</div>
+                                                <div className="text-xs text-gray-700">✉️ {redemption.customerEmail || 'No email'}</div>
+                                                {redemption.customerAddress && (
+                                                    <div className="text-xs text-gray-600">📍 {redemption.customerAddress}</div>
+                                                )}
+                                                {redemption.customerAge && (
+                                                    <div className="text-xs text-gray-600">👤 Age: {redemption.customerAge}, {redemption.customerGender || 'N/A'}</div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                                    redemption.affiliateId ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                                                <div className="space-y-1">
+                                                    <div className="text-xs font-medium text-gray-800">🏪 Your Shop</div>
+                                                    <div className="text-xs">↓</div>
+                                                    {redemption.affiliateId ? (
+                                                        <>
+                                                            <div className="text-xs font-medium text-blue-700">📈 {redemption.affiliateName || 'Affiliate Partner'}</div>
+                                                            <div className="text-xs">↓</div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="text-xs text-gray-500">⚡ Direct Access</div>
+                                                            <div className="text-xs">↓</div>
+                                                        </>
+                                                    )}
+                                                    <div className="text-xs font-medium text-green-700">👤 {redemption.customerName || 'Customer'}</div>
+                                                </div>
+                                                <span className={`mt-2 inline-block px-2 py-1 text-xs font-medium rounded-full ${
+                                                    redemption.affiliateId ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
                                                 }`}>
-                                                    {redemption.affiliateId ? 'Affiliate → User' : 'Direct User'}
+                                                    {redemption.affiliateId ? 'Via Affiliate' : 'Direct Customer'}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 {redemption.affiliateId ? (
-                                                    <div>
-                                                        <div className="text-sm font-medium text-gray-900">{redemption.affiliateName || 'Unknown'}</div>
+                                                    <div className="space-y-1">
+                                                        <div className="text-sm font-medium text-gray-900">{redemption.affiliateName || 'Partner'}</div>
                                                         <div className="text-xs text-gray-500">ID: {redemption.affiliateId?.slice(0, 8)}</div>
+                                                        <div className="text-xs text-blue-600">💰 Earned: {redemption.commissionEarned || 0} credits</div>
+                                                        <div className="text-xs text-green-600">🎯 Performance: Active</div>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-sm text-gray-500">N/A</span>
+                                                    <div className="space-y-1">
+                                                        <span className="text-sm text-gray-500">No affiliate involved</span>
+                                                        <div className="text-xs text-green-600">💰 Full revenue retained</div>
+                                                        <div className="text-xs text-blue-600">⚡ Direct customer acquisition</div>
+                                                    </div>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="text-sm font-medium text-green-600">
-                                                    {redemption.commissionEarned ? `${redemption.commissionEarned} credits` : 'N/A'}
+                                                <div className="space-y-1">
+                                                    <div className="text-sm font-medium text-green-600">
+                                                        💰 Commission: {redemption.commissionEarned ? `${redemption.commissionEarned} credits` : 'None'}
+                                                    </div>
+                                                    <div className="text-xs text-gray-600">
+                                                        🎁 Customer earned: {redemption.customerRewardPoints || 0} points
+                                                    </div>
+                                                    <div className="text-xs text-blue-600">
+                                                        📊 Net impact: {redemption.affiliateId ? 'Commission paid' : 'Full retention'}
+                                                    </div>
+                                                    <div className="text-xs text-purple-600">
+                                                        🎯 Acquisition cost: {redemption.commissionEarned ? `${redemption.commissionEarned} credits` : 'Free'}
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>

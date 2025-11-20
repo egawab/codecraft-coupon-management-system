@@ -120,39 +120,8 @@ const HomePage: React.FC = () => {
                 </div>
             </section>
 
-            <section className="glass-panel p-8 md:p-12">
-                <div className="grid gap-10 md:grid-cols-2 items-center">
-                    <div>
-                        <p className="hero-pill text-sm text-primary/90 bg-primary/5 border-primary/20 inline-flex mb-4">
-                            {t('home.howItWorks.title')}
-                        </p>
-                        <h3 className="text-3xl font-bold text-dark-gray mb-4">
-                            {t('home.workflow.title')}
-                        </h3>
-                        <p className="text-gray-600 leading-relaxed">
-                            {t('home.workflow.description')}
-                        </p>
-                    </div>
-                    <div className="space-y-6">
-                        {steps.map((step, index) => (
-                            <div key={step.title} className="flex gap-4">
-                                <div className="flex-shrink-0">
-                                    <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary font-semibold flex items-center justify-center">
-                                        {index + 1}
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="font-semibold text-lg text-dark-gray">{step.title}</p>
-                                    <p className="text-gray-600">{step.description}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* CRITICAL: Choose Your Path - Moved to Top Priority Section */}
-            <section className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-10 mb-8 shadow-lg border border-indigo-200">
+            {/* CRITICAL: Choose Your Path - TOP PRIORITY SECTION - Directly under header */}
+            <section className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-10 mb-8 shadow-xl border border-indigo-200">
                 <div className="text-center mb-12">
                     <h2 className="text-4xl font-bold text-gray-800 mb-4">🚀 Choose Your Path</h2>
                     <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -274,6 +243,38 @@ const HomePage: React.FC = () => {
                     </div>
                 </div>
             </section>
+
+            <section className="glass-panel p-8 md:p-12">
+                <div className="grid gap-10 md:grid-cols-2 items-center">
+                    <div>
+                        <p className="hero-pill text-sm text-primary/90 bg-primary/5 border-primary/20 inline-flex mb-4">
+                            {t('home.howItWorks.title')}
+                        </p>
+                        <h3 className="text-3xl font-bold text-dark-gray mb-4">
+                            {t('home.workflow.title')}
+                        </h3>
+                        <p className="text-gray-600 leading-relaxed">
+                            {t('home.workflow.description')}
+                        </p>
+                    </div>
+                    <div className="space-y-6">
+                        {steps.map((step, index) => (
+                            <div key={step.title} className="flex gap-4">
+                                <div className="flex-shrink-0">
+                                    <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary font-semibold flex items-center justify-center">
+                                        {index + 1}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-lg text-dark-gray">{step.title}</p>
+                                    <p className="text-gray-600">{step.description}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
 
             <section className="glass-panel p-10 text-center">
                 <p className="hero-pill mx-auto mb-4 text-sm text-primary/90 bg-primary/5 border-primary/20">
