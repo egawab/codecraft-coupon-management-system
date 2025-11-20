@@ -537,6 +537,117 @@ const AdminDashboard: React.FC = () => {
                                         👤 {activity.customerData.name} | 📞 {activity.customerData.phone}
                                     </div>
                                 )}
+
+                                {/* Affiliate Details Modal */}
+                                {affiliateDetailsOpen && selectedAffiliate && (
+                                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                        <div className="bg-white rounded-lg p-6 max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <h2 className="text-2xl font-bold text-gray-800">
+                                                    📊 {selectedAffiliate.name} - Complete Performance Report
+                                                </h2>
+                                                <button
+                                                    onClick={() => setAffiliateDetailsOpen(false)}
+                                                    className="text-gray-500 hover:text-gray-700 text-2xl"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+
+                                            <div className="space-y-6">
+                                                {/* Affiliate Overview */}
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                                        <h3 className="font-semibold text-blue-800">Contact Info</h3>
+                                                        <div className="text-sm text-gray-600 space-y-1 mt-2">
+                                                            <p><strong>Email:</strong> {selectedAffiliate.email}</p>
+                                                            <p><strong>ID:</strong> {selectedAffiliate.id}</p>
+                                                            <p><strong>Credits:</strong> {selectedAffiliate.credits}</p>
+                                                            <p><strong>Joined:</strong> {new Date(selectedAffiliate.createdAt || Date.now()).toLocaleDateString()}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    {(() => {
+                                                        const analytics = getAffiliateAnalytics(selectedAffiliate.id);
+                                                        return (
+                                                            <>
+                                                                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                                                                    <h3 className="font-semibold text-green-800">Performance</h3>
+                                                                    <div className="text-sm text-gray-600 space-y-1 mt-2">
+                                                                        <p><strong>Coupons Promoted:</strong> {analytics.couponsPromoted}</p>
+                                                                        <p><strong>Total Conversions:</strong> {analytics.redemptions}</p>
+                                                                        <p><strong>Conversion Rate:</strong> {analytics.conversionRate}%</p>
+                                                                        <p><strong>Est. Traffic:</strong> {analytics.totalTraffic}</p>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                                                    <h3 className="font-semibold text-purple-800">Earnings</h3>
+                                                                    <div className="text-sm text-gray-600 space-y-1 mt-2">
+                                                                        <p><strong>Total Commissions:</strong> {analytics.totalCommissions}</p>
+                                                                        <p><strong>Avg per Conversion:</strong> {analytics.avgCommissionPerRedemption}</p>
+                                                                        <p><strong>Revenue Generated:</strong> ~{(analytics.totalCommissions * 5).toLocaleString()}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </div>
+
+                                                {/* Recent Activity */}
+                                                <div>
+                                                    <h3 className="font-semibold text-gray-800 mb-4">🔍 Recent Activity</h3>
+                                                    <div className="max-h-60 overflow-y-auto space-y-2">
+                                                        {systemActivity
+                                                            .filter(activity => activity.affiliateId === selectedAffiliate.id || activity.message?.includes(selectedAffiliate.name))
+                                                            .slice(0, 10)
+                                                            .map((activity, index) => (
+                                                                <div key={index} className="bg-gray-50 p-3 rounded border text-sm">
+                                                                    <div className="flex justify-between items-start">
+                                                                        <span className="font-medium">{activity.type || 'Activity'}</span>
+                                                                        <span className="text-xs text-gray-500">
+                                                                            {activity.timestamp ? new Date(activity.timestamp.toDate()).toLocaleString() : 'Recent'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-gray-600">{activity.message || activity.details || 'System action'}</p>
+                                                                </div>
+                                                            ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Promoted Coupons */}
+                                                <div>
+                                                    <h3 className="font-semibold text-gray-800 mb-4">🎟️ Promoted Coupons</h3>
+                                                    <div className="overflow-x-auto">
+                                                        <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                                            <thead className="bg-gray-50">
+                                                                <tr>
+                                                                    <th className="px-4 py-2 text-left">Coupon</th>
+                                                                    <th className="px-4 py-2 text-left">Shop</th>
+                                                                    <th className="px-4 py-2 text-left">Redemptions</th>
+                                                                    <th className="px-4 py-2 text-left">Commission</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-200">
+                                                                {redemptions
+                                                                    .filter(r => r.affiliateId === selectedAffiliate.id)
+                                                                    .slice(0, 10)
+                                                                    .map((redemption, index) => (
+                                                                        <tr key={index}>
+                                                                            <td className="px-4 py-2">{redemption.couponTitle || 'Unknown'}</td>
+                                                                            <td className="px-4 py-2">{redemption.shopOwnerName || 'Unknown'}</td>
+                                                                            <td className="px-4 py-2">1</td>
+                                                                            <td className="px-4 py-2">{redemption.commissionEarned || 0}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}

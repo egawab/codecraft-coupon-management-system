@@ -47,7 +47,15 @@ const LoginPage: React.FC = () => {
       setReferredBy(referralId);
       setIsLoginMode(false);
     }
-  }, []);
+    
+    // Check for role parameter from home page navigation
+    const urlParams = new URLSearchParams(location.search);
+    const roleParam = urlParams.get('role');
+    if (roleParam && ['shop-owner', 'affiliate', 'user'].includes(roleParam)) {
+      setRole(roleParam as any);
+      setIsLoginMode(false); // Start with signup if role is specified
+    }
+  }, [location]);
 
   // Handle country change
   useEffect(() => {

@@ -151,6 +151,105 @@ const HomePage: React.FC = () => {
                 </div>
             </section>
 
+            {/* Account Type Selection Section - NEW */}
+            <section className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-8 border border-blue-100">
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Choose Your Path</h2>
+                    <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                        Select your account type to get started with the right tools and features for your business needs.
+                    </p>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                    {/* Shop Owner Path */}
+                    <div className="bg-white rounded-xl p-6 shadow-lg border border-blue-200 hover:shadow-xl transition-all">
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-2xl">🏪</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-blue-800 mb-3">Shop Owner</h3>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Create and manage coupons for your business. Track redemptions and grow your customer base.
+                            </p>
+                            <ul className="text-xs text-gray-500 space-y-1 mb-6 text-left">
+                                <li>✓ Create unlimited coupons</li>
+                                <li>✓ Track customer redemptions</li>
+                                <li>✓ Manage referral programs</li>
+                                <li>✓ Access detailed analytics</li>
+                            </ul>
+                            <Link 
+                                to="/login?role=shop-owner"
+                                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-block text-center"
+                            >
+                                Start as Shop Owner
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Affiliate Path */}
+                    <div className="bg-white rounded-xl p-6 shadow-lg border border-green-200 hover:shadow-xl transition-all">
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-2xl">📢</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-green-800 mb-3">Affiliate Marketer</h3>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Promote coupons and earn commissions. Build your marketing network and track performance.
+                            </p>
+                            <ul className="text-xs text-gray-500 space-y-1 mb-6 text-left">
+                                <li>✓ Earn commission on promotions</li>
+                                <li>✓ Access marketing materials</li>
+                                <li>✓ Track conversion rates</li>
+                                <li>✓ Get referral bonuses</li>
+                            </ul>
+                            <Link 
+                                to="/login?role=affiliate"
+                                className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors inline-block text-center"
+                            >
+                                Start as Affiliate
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Customer Path */}
+                    <div className="bg-white rounded-xl p-6 shadow-lg border border-purple-200 hover:shadow-xl transition-all">
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-2xl">🛍️</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-purple-800 mb-3">Customer</h3>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Discover amazing deals and earn credits with every purchase. Build your reward balance.
+                            </p>
+                            <ul className="text-xs text-gray-500 space-y-1 mb-6 text-left">
+                                <li>✓ Access exclusive deals</li>
+                                <li>✓ Earn credits on redemptions</li>
+                                <li>✓ Build reward balance</li>
+                                <li>✓ Discover new businesses</li>
+                            </ul>
+                            <Link 
+                                to="/login?role=user"
+                                className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-purple-700 transition-colors inline-block text-center"
+                            >
+                                Start as Customer
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="text-center mt-8">
+                    <p className="text-sm text-gray-500">
+                        Already have an account? 
+                        <Link 
+                            to="/login"
+                            className="text-blue-600 hover:text-blue-800 font-semibold ml-2"
+                        >
+                            Sign In Here
+                        </Link>
+                    </p>
+                </div>
+            </section>
+
             <section className="glass-panel p-10 text-center">
                 <p className="hero-pill mx-auto mb-4 text-sm text-primary/90 bg-primary/5 border-primary/20">
                     {t('home.ctaSection.highlight')}

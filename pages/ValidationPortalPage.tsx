@@ -23,7 +23,10 @@ const ValidationPortalPage: React.FC = () => {
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
+    const [customerAge, setCustomerAge] = useState('');
+    const [customerGender, setCustomerGender] = useState('');
     const [isSubmittingData, setIsSubmittingData] = useState(false);
+    const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
     
     const queryParams = new URLSearchParams(location.search);
     const affiliateId = queryParams.get('affiliateId');
@@ -54,18 +57,38 @@ const ValidationPortalPage: React.FC = () => {
             return;
         }
         
-        // Validate customer data
-        if (!customerName.trim() || !customerPhone.trim()) {
-            setRedeemMessage('Please provide your name and phone number to redeem this coupon.');
+        // Comprehensive validation of customer data
+        const errors: {[key: string]: string} = {};
+        
+        if (!customerName.trim()) {
+            errors.name = 'Full name is required';
+        } else if (customerName.trim().length < 2) {
+            errors.name = 'Please enter your full name (at least 2 characters)';
+        }
+        
+        if (!customerPhone.trim()) {
+            errors.phone = 'Phone number is required';
+        } else {
+            const phoneRegex = /^[\+]?[\d\s\-\(\)]{10,}$/;
+            if (!phoneRegex.test(customerPhone.trim())) {
+                errors.phone = 'Please provide a valid phone number (at least 10 digits)';
+            }
+        }
+        
+        if (customerEmail && customerEmail.trim()) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(customerEmail.trim())) {
+                errors.email = 'Please provide a valid email address';
+            }
+        }
+        
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            setRedeemMessage('Please fix the form errors before proceeding.');
             return;
         }
-
-        // Basic phone validation
-        const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
-        if (!phoneRegex.test(customerPhone.trim())) {
-            setRedeemMessage('Please provide a valid phone number (at least 10 digits).');
-            return;
-        }
+        
+        setFormErrors({});
         
         setIsRedeeming(true);
         setRedeemMessage('');
@@ -73,17 +96,32 @@ const ValidationPortalPage: React.FC = () => {
         // Collect comprehensive customer data
         setIsSubmittingData(true);
         const customerData = {
+            // Customer Information
             name: customerName.trim(),
             phone: customerPhone.trim(),
             email: customerEmail.trim() || user.email,
             address: customerAddress.trim(),
+            age: customerAge ? parseInt(customerAge) : null,
+            gender: customerGender || null,
+            
+            // User Account Info
             userId: user.id,
             userEmail: user.email,
+            userAccountName: user.name,
+            
+            // Coupon Information
             couponId: id,
             couponTitle: coupon?.offerTitle || 'Unknown Coupon',
+            shopOwnerId: coupon?.shopOwnerId || 'unknown',
             shopOwnerName: coupon?.shopOwnerName || 'Unknown Shop',
+            discountAmount: coupon?.discountValue || 0,
+            
+            // Redemption Context
             redeemedAt: new Date().toISOString(),
-            redemptionLocation: window.location.href
+            redemptionLocation: window.location.href,
+            affiliateId: affiliateId || null,
+            redemptionIP: 'client-side', // Could be enhanced with IP detection
+            userAgent: navigator.userAgent
         };
         
         // Call the secure API endpoint which triggers the Cloud Function
@@ -132,45 +170,89 @@ const ValidationPortalPage: React.FC = () => {
                         <h4 className="font-semibold text-gray-800 mb-3">📝 Customer Information Required</h4>
                         <p className="text-sm text-gray-600 mb-3">Please provide your contact details so the shop owner can verify and contact you later.</p>
                         
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Full Name *</label>
                                 <input
                                     type="text"
                                     value={customerName}
-                                    onChange={(e) => setCustomerName(e.target.value)}
+                                    onChange={(e) => {
+                                        setCustomerName(e.target.value);
+                                        if (formErrors.name) setFormErrors(prev => ({...prev, name: ''}));
+                                    }}
                                     placeholder="Enter your full name"
-                                    className="mt-1 w-full form-input"
+                                    className={`mt-1 w-full form-input ${formErrors.name ? 'border-red-500' : ''}`}
                                     required
                                 />
+                                {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
                             </div>
+                            
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Phone Number *</label>
                                 <input
                                     type="tel"
                                     value={customerPhone}
-                                    onChange={(e) => setCustomerPhone(e.target.value)}
-                                    placeholder="Enter your phone number"
-                                    className="mt-1 w-full form-input"
+                                    onChange={(e) => {
+                                        setCustomerPhone(e.target.value);
+                                        if (formErrors.phone) setFormErrors(prev => ({...prev, phone: ''}));
+                                    }}
+                                    placeholder="Enter your phone number (+20 1234567890)"
+                                    className={`mt-1 w-full form-input ${formErrors.phone ? 'border-red-500' : ''}`}
                                     required
                                 />
+                                {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
                             </div>
+                            
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Email (Optional)</label>
                                 <input
                                     type="email"
                                     value={customerEmail}
-                                    onChange={(e) => setCustomerEmail(e.target.value)}
-                                    placeholder="Enter your email"
-                                    className="mt-1 w-full form-input"
+                                    onChange={(e) => {
+                                        setCustomerEmail(e.target.value);
+                                        if (formErrors.email) setFormErrors(prev => ({...prev, email: ''}));
+                                    }}
+                                    placeholder="Enter your email address"
+                                    className={`mt-1 w-full form-input ${formErrors.email ? 'border-red-500' : ''}`}
                                 />
+                                {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
                             </div>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Age (Optional)</label>
+                                    <input
+                                        type="number"
+                                        value={customerAge}
+                                        onChange={(e) => setCustomerAge(e.target.value)}
+                                        placeholder="Age"
+                                        min="13"
+                                        max="120"
+                                        className="mt-1 w-full form-input"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Gender (Optional)</label>
+                                    <select
+                                        value={customerGender}
+                                        onChange={(e) => setCustomerGender(e.target.value)}
+                                        className="mt-1 w-full form-select"
+                                    >
+                                        <option value="">Select</option>
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                        <option value="other">Other</option>
+                                        <option value="prefer-not-to-say">Prefer not to say</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Address (Optional)</label>
                                 <textarea
                                     value={customerAddress}
                                     onChange={(e) => setCustomerAddress(e.target.value)}
-                                    placeholder="Enter your address"
+                                    placeholder="Enter your address (city, district, street)"
                                     className="mt-1 w-full form-input"
                                     rows={2}
                                 />
