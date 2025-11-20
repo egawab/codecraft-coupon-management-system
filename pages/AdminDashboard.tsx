@@ -25,6 +25,7 @@ type AdminTab =
     | 'coupons'
     | 'redemptions'
     | 'referrals'
+    | 'intelligence'
     | 'settings';
 
 const AdminDashboard: React.FC = () => {
@@ -45,6 +46,8 @@ const AdminDashboard: React.FC = () => {
     const [affiliateDetailsOpen, setAffiliateDetailsOpen] = useState(false);
     const [selectedAffiliate, setSelectedAffiliate] = useState<User | null>(null);
     const [systemActivity, setSystemActivity] = useState<any[]>([]);
+    const [allCustomerData, setAllCustomerData] = useState<any[]>([]);
+    const [intelligenceData, setIntelligenceData] = useState<any>({});
 
     const fetchData = useCallback(async () => {
         if (user?.roles.includes('admin')) {
@@ -70,9 +73,274 @@ const AdminDashboard: React.FC = () => {
         }
     }, [user]);
 
+    const fetchIntelligenceData = useCallback(async () => {
+        if (user?.roles.includes('admin')) {
+            setBusy(true);
+            try {
+                console.log('🔍 Fetching comprehensive intelligence data...');
+                
+                // Fetch all customer data from multiple sources
+                const allShopIds = allUsers.filter(u => u.roles.includes('shop-owner')).map(u => u.id);
+                const allAffiliateIds = allUsers.filter(u => u.roles.includes('affiliate')).map(u => u.id);
+                
+                const [shopCustomerData, affiliateCustomerData] = await Promise.all([
+                    Promise.all(allShopIds.map(shopId => api.getCustomerDataForShop(shopId))),
+                    Promise.all(allAffiliateIds.map(affiliateId => api.getCustomerDataForAffiliate(affiliateId)))
+                ]);
+                
+                // Flatten and combine customer data
+                const allCustomers = [
+                    ...shopCustomerData.flat(),
+                    ...affiliateCustomerData.flat()
+                ];
+                
+                // Deduplicate customer data
+                const uniqueCustomers = allCustomers.reduce((unique, customer) => {
+                    const key = `${customer.couponId}-${customer.userId}`;
+                    if (!unique.find(item => `${item.couponId}-${item.userId}` === key)) {
+                        unique.push(customer);
+                    }
+                    return unique;
+                }, [] as any[]);
+                
+                setAllCustomerData(uniqueCustomers);
+                
+                // Calculate intelligence insights
+                const intelligence = calculateIntelligenceInsights(uniqueCustomers, allUsers, allCoupons, redemptions);
+                setIntelligenceData(intelligence);
+                
+                console.log(`📊 Intelligence data compiled: ${uniqueCustomers.length} customers, ${Object.keys(intelligence).length} insights`);
+                
+            } catch (error) {
+                console.error('❌ Error fetching intelligence data:', error);
+            } finally {
+                setBusy(false);
+            }
+        }
+    }, [user, allUsers, allCoupons, redemptions]);
+
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    useEffect(() => {
+        if (activeTab === 'intelligence' && allUsers.length > 0) {
+            fetchIntelligenceData();
+        }
+    }, [activeTab, allUsers.length, fetchIntelligenceData]);
+
+    // Intelligence calculation function
+    const calculateIntelligenceInsights = (customers: any[], users: any[], coupons: any[], redemptions: any[]) => {
+        const shopOwners = users.filter(u => u.roles.includes('shop-owner'));
+        const affiliates = users.filter(u => u.roles.includes('affiliate'));
+        
+        // Shop insights
+        const shopInsights = shopOwners.map(shop => {
+            const shopCoupons = coupons.filter(c => c.shopOwnerId === shop.id);
+            const shopRedemptions = redemptions.filter(r => r.shopOwnerId === shop.id);
+            const shopCustomers = customers.filter(c => c.shopOwnerId === shop.id);
+            
+            const affiliateRedemptions = shopRedemptions.filter(r => r.affiliateId);
+            const directRedemptions = shopRedemptions.filter(r => !r.affiliateId);
+            
+            const uniqueAffiliates = [...new Set(affiliateRedemptions.map(r => r.affiliateId))];
+            const totalCommissionsPaid = affiliateRedemptions.reduce((sum, r) => sum + (r.commissionEarned || 0), 0);
+            
+            return {
+                id: shop.id,
+                name: shop.name,
+                email: shop.email,
+                credits: shop.credits,
+                couponsCreated: shopCoupons.length,
+                totalRedemptions: shopRedemptions.length,
+                uniqueCustomers: [...new Set(shopCustomers.map(c => c.userId))].length,
+                affiliateRedemptions: affiliateRedemptions.length,
+                directRedemptions: directRedemptions.length,
+                affiliatesWorkedWith: uniqueAffiliates.length,
+                totalCommissionsPaid,
+                avgRedemptionsPerCoupon: shopCoupons.length > 0 ? (shopRedemptions.length / shopCoupons.length).toFixed(2) : '0',
+                conversionRate: shopCoupons.length > 0 ? ((shopRedemptions.length / shopCoupons.reduce((sum, c) => sum + c.clicks, 0)) * 100).toFixed(2) : '0',
+                customerRetention: shopCustomers.filter(c => c.hasCompleteProfile).length,
+                performanceScore: calculatePerformanceScore(shopRedemptions.length, shopCoupons.length, totalCommissionsPaid)
+            };
+        });
+
+        // Affiliate insights  
+        const affiliateInsights = affiliates.map(affiliate => {
+            const affiliateRedemptions = redemptions.filter(r => r.affiliateId === affiliate.id);
+            const affiliateCustomers = customers.filter(c => c.affiliateId === affiliate.id);
+            const couponsPromoted = [...new Set(affiliateRedemptions.map(r => r.couponId))];
+            const shopsWorkedWith = [...new Set(affiliateRedemptions.map(r => r.shopOwnerId))];
+            const totalCommissionsEarned = affiliateRedemptions.reduce((sum, r) => sum + (r.commissionEarned || 0), 0);
+            
+            return {
+                id: affiliate.id,
+                name: affiliate.name,
+                email: affiliate.email,
+                credits: affiliate.credits,
+                couponsPromoted: couponsPromoted.length,
+                totalConversions: affiliateRedemptions.length,
+                uniqueCustomers: [...new Set(affiliateCustomers.map(c => c.userId))].length,
+                shopsWorkedWith: shopsWorkedWith.length,
+                totalCommissionsEarned,
+                avgCommissionPerConversion: affiliateRedemptions.length > 0 ? (totalCommissionsEarned / affiliateRedemptions.length).toFixed(2) : '0',
+                customerQuality: affiliateCustomers.filter(c => c.isVerifiedCustomer).length,
+                networkValue: calculateNetworkValue(affiliateRedemptions.length, shopsWorkedWith.length, totalCommissionsEarned)
+            };
+        });
+
+        // Customer analytics
+        const customerAnalytics = {
+            totalUniqueCustomers: [...new Set(customers.map(c => c.userId))].length,
+            verifiedCustomers: customers.filter(c => c.isVerifiedCustomer).length,
+            completeProfiles: customers.filter(c => c.hasCompleteProfile).length,
+            avgRedemptionsPerCustomer: customers.length > 0 ? (customers.length / [...new Set(customers.map(c => c.userId))].length).toFixed(2) : '0',
+            topCustomers: getTopCustomers(customers),
+            customerJourney: analyzeCustomerJourney(customers),
+            demographicBreakdown: analyzeDemographics(customers)
+        };
+
+        // Global analytics
+        const globalAnalytics = {
+            totalRevenue: redemptions.reduce((sum, r) => sum + (r.discountValue || 0), 0),
+            totalCommissions: redemptions.reduce((sum, r) => sum + (r.commissionEarned || 0), 0),
+            networkEfficiency: redemptions.length > 0 ? ((redemptions.filter(r => r.affiliateId).length / redemptions.length) * 100).toFixed(2) : '0',
+            topPerformingCoupons: getTopPerformingCoupons(coupons, redemptions),
+            growthMetrics: calculateGrowthMetrics(redemptions, customers),
+            systemHealth: calculateSystemHealth(shopInsights, affiliateInsights, customers)
+        };
+
+        return {
+            shopInsights: shopInsights.sort((a, b) => b.performanceScore - a.performanceScore),
+            affiliateInsights: affiliateInsights.sort((a, b) => b.networkValue - a.networkValue),
+            customerAnalytics,
+            globalAnalytics,
+            lastUpdated: new Date().toISOString()
+        };
+    };
+
+    // Helper functions for calculations
+    const calculatePerformanceScore = (redemptions: number, coupons: number, commissions: number) => {
+        return (redemptions * 10) + (coupons * 5) - (commissions * 0.1);
+    };
+
+    const calculateNetworkValue = (conversions: number, shops: number, commissions: number) => {
+        return (conversions * 15) + (shops * 25) + (commissions * 0.2);
+    };
+
+    const getTopCustomers = (customers: any[]) => {
+        const customerStats = customers.reduce((stats, customer) => {
+            const userId = customer.userId;
+            if (!stats[userId]) {
+                stats[userId] = {
+                    userId,
+                    name: customer.customerName || 'Unknown',
+                    email: customer.customerEmail,
+                    redemptions: 0,
+                    totalSavings: 0,
+                    shopsVisited: new Set(),
+                    affiliatesUsed: new Set()
+                };
+            }
+            stats[userId].redemptions++;
+            stats[userId].totalSavings += customer.discountValue || 0;
+            stats[userId].shopsVisited.add(customer.shopOwnerId);
+            if (customer.affiliateId) stats[userId].affiliatesUsed.add(customer.affiliateId);
+            return stats;
+        }, {} as any);
+
+        return Object.values(customerStats)
+            .map((customer: any) => ({
+                ...customer,
+                shopsVisited: customer.shopsVisited.size,
+                affiliatesUsed: customer.affiliatesUsed.size
+            }))
+            .sort((a: any, b: any) => b.redemptions - a.redemptions)
+            .slice(0, 10);
+    };
+
+    const analyzeCustomerJourney = (customers: any[]) => {
+        const journeySteps = customers.reduce((steps, customer) => {
+            const source = customer.affiliateId ? 'affiliate' : 'direct';
+            if (!steps[source]) steps[source] = 0;
+            steps[source]++;
+            return steps;
+        }, {} as any);
+
+        return journeySteps;
+    };
+
+    const analyzeDemographics = (customers: any[]) => {
+        const demographics = {
+            ageGroups: {} as any,
+            genderDistribution: {} as any,
+            locationData: {} as any
+        };
+
+        customers.forEach(customer => {
+            // Age analysis
+            if (customer.customerAge) {
+                const ageGroup = customer.customerAge < 25 ? '18-24' :
+                                customer.customerAge < 35 ? '25-34' :
+                                customer.customerAge < 45 ? '35-44' :
+                                customer.customerAge < 55 ? '45-54' : '55+';
+                demographics.ageGroups[ageGroup] = (demographics.ageGroups[ageGroup] || 0) + 1;
+            }
+
+            // Gender analysis
+            if (customer.customerGender) {
+                demographics.genderDistribution[customer.customerGender] = 
+                    (demographics.genderDistribution[customer.customerGender] || 0) + 1;
+            }
+        });
+
+        return demographics;
+    };
+
+    const getTopPerformingCoupons = (coupons: any[], redemptions: any[]) => {
+        return coupons
+            .map(coupon => {
+                const couponRedemptions = redemptions.filter(r => r.couponId === coupon.id);
+                return {
+                    ...coupon,
+                    redemptionCount: couponRedemptions.length,
+                    conversionRate: coupon.clicks > 0 ? ((couponRedemptions.length / coupon.clicks) * 100).toFixed(2) : '0',
+                    totalCommissionsPaid: couponRedemptions.reduce((sum, r) => sum + (r.commissionEarned || 0), 0)
+                };
+            })
+            .sort((a, b) => b.redemptionCount - a.redemptionCount)
+            .slice(0, 10);
+    };
+
+    const calculateGrowthMetrics = (redemptions: any[], customers: any[]) => {
+        const now = new Date();
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        const thisMonthRedemptions = redemptions.filter(r => new Date(r.redeemedAt) > lastMonth).length;
+        const thisWeekRedemptions = redemptions.filter(r => new Date(r.redeemedAt) > lastWeek).length;
+        const thisMonthCustomers = customers.filter(c => new Date(c.redeemedAt) > lastMonth).length;
+
+        return {
+            monthlyRedemptions: thisMonthRedemptions,
+            weeklyRedemptions: thisWeekRedemptions,
+            monthlyNewCustomers: thisMonthCustomers,
+            avgDailyRedemptions: (thisMonthRedemptions / 30).toFixed(1)
+        };
+    };
+
+    const calculateSystemHealth = (shops: any[], affiliates: any[], customers: any[]) => {
+        const activeShops = shops.filter(s => s.totalRedemptions > 0).length;
+        const activeAffiliates = affiliates.filter(a => a.totalConversions > 0).length;
+        const healthScore = ((activeShops / shops.length) + (activeAffiliates / affiliates.length)) * 50;
+
+        return {
+            healthScore: healthScore.toFixed(1),
+            activeShopsPercent: ((activeShops / shops.length) * 100).toFixed(1),
+            activeAffiliatesPercent: ((activeAffiliates / affiliates.length) * 100).toFixed(1),
+            customerSatisfaction: ((customers.filter(c => c.isVerifiedCustomer).length / customers.length) * 100).toFixed(1)
+        };
+    };
 
     const shopOwners = useMemo(() => allUsers.filter((u) => u.roles.includes('shop-owner')), [allUsers]);
     const affiliates = useMemo(() => allUsers.filter((u) => u.roles.includes('affiliate')), [allUsers]);
@@ -260,6 +528,7 @@ const AdminDashboard: React.FC = () => {
         { id: 'coupons', label: 'Coupons', icon: <TicketIcon className="h-4 w-4" /> },
         { id: 'redemptions', label: 'Redemptions', icon: <BanknotesIcon className="h-4 w-4" /> },
         { id: 'referrals', label: 'Referrals', icon: <GiftIcon className="h-4 w-4" /> },
+        { id: 'intelligence', label: 'Data Intelligence Center', icon: <TableCellsIcon className="h-4 w-4" /> },
         { id: 'settings', label: 'System Settings', icon: <Cog6ToothIcon className="h-4 w-4" /> }
     ];
 
@@ -646,6 +915,342 @@ const AdminDashboard: React.FC = () => {
                 </td>
             </tr>
         ))
+    );
+
+    // NEW: Data Intelligence Center Content
+    const intelligenceContent = (
+        <div className="space-y-8">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 text-white p-8 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-4xl font-bold mb-2">🧠 Data Intelligence Center</h1>
+                        <p className="text-purple-100">Complete system-wide analytics and insights dashboard</p>
+                        <p className="text-sm text-blue-200 mt-1">
+                            Last updated: {intelligenceData.lastUpdated ? new Date(intelligenceData.lastUpdated).toLocaleString() : 'Not loaded'}
+                        </p>
+                    </div>
+                    <div className="text-right">
+                        <button
+                            onClick={fetchIntelligenceData}
+                            disabled={busy}
+                            className="px-6 py-3 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg transition-all font-medium"
+                        >
+                            {busy ? '🔄 Loading...' : '🔄 Refresh Data'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {busy && (
+                <div className="text-center py-12">
+                    <div className="animate-spin inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+                    <p className="mt-4 text-gray-600">Loading comprehensive intelligence data...</p>
+                </div>
+            )}
+
+            {!busy && intelligenceData.globalAnalytics && (
+                <>
+                    {/* Global System Overview */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-xl">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-blue-100 text-sm">Total System Health</p>
+                                    <p className="text-3xl font-bold">{intelligenceData.globalAnalytics.systemHealth.healthScore}%</p>
+                                </div>
+                                <div className="text-blue-200">💚</div>
+                            </div>
+                        </div>
+                        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-xl">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-green-100 text-sm">Network Efficiency</p>
+                                    <p className="text-3xl font-bold">{intelligenceData.globalAnalytics.networkEfficiency}%</p>
+                                </div>
+                                <div className="text-green-200">📈</div>
+                            </div>
+                        </div>
+                        <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-xl">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-purple-100 text-sm">Total Revenue Impact</p>
+                                    <p className="text-3xl font-bold">${intelligenceData.globalAnalytics.totalRevenue.toLocaleString()}</p>
+                                </div>
+                                <div className="text-purple-200">💰</div>
+                            </div>
+                        </div>
+                        <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-xl">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-orange-100 text-sm">Unique Customers</p>
+                                    <p className="text-3xl font-bold">{intelligenceData.customerAnalytics.totalUniqueCustomers.toLocaleString()}</p>
+                                </div>
+                                <div className="text-orange-200">👥</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Shop Insights Section */}
+                    <div className="bg-white rounded-xl shadow-lg border overflow-hidden">
+                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 border-b">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">🏪 Complete Shop Insights</h2>
+                            <p className="text-gray-600">Comprehensive analysis of all shop owner performance and customer acquisition</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 text-xs text-gray-700 uppercase">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left">Shop Details</th>
+                                        <th className="px-6 py-3 text-left">Coupon Performance</th>
+                                        <th className="px-6 py-3 text-left">Customer Analytics</th>
+                                        <th className="px-6 py-3 text-left">Affiliate Network</th>
+                                        <th className="px-6 py-3 text-left">Financial Impact</th>
+                                        <th className="px-6 py-3 text-left">Performance Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {intelligenceData.shopInsights.slice(0, 20).map((shop: any) => (
+                                        <tr key={shop.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="font-medium text-gray-900">{shop.name}</div>
+                                                    <div className="text-xs text-gray-500">{shop.email}</div>
+                                                    <div className="text-xs text-blue-600">{shop.credits.toLocaleString()} credits</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm">📊 {shop.couponsCreated} coupons created</div>
+                                                    <div className="text-sm">🎯 {shop.totalRedemptions} total redemptions</div>
+                                                    <div className="text-xs text-gray-600">Avg: {shop.avgRedemptionsPerCoupon} per coupon</div>
+                                                    <div className="text-xs text-green-600">Conv: {shop.conversionRate}%</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm">👥 {shop.uniqueCustomers} unique customers</div>
+                                                    <div className="text-xs text-blue-600">📈 {shop.directRedemptions} direct</div>
+                                                    <div className="text-xs text-purple-600">🤝 {shop.affiliateRedemptions} via affiliates</div>
+                                                    <div className="text-xs text-green-600">🔒 {shop.customerRetention} retained</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm">🤝 {shop.affiliatesWorkedWith} affiliates</div>
+                                                    <div className="text-xs text-green-600">💰 {shop.totalCommissionsPaid.toLocaleString()} paid out</div>
+                                                    <div className="text-xs text-gray-600">Network strength: {shop.affiliatesWorkedWith > 0 ? 'Strong' : 'Direct only'}</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm font-medium text-green-600">Revenue positive</div>
+                                                    <div className="text-xs text-gray-600">Cost: {shop.totalCommissionsPaid} credits</div>
+                                                    <div className="text-xs text-blue-600">ROI: Positive</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-lg font-bold text-purple-600">{shop.performanceScore.toFixed(0)}</div>
+                                                    <div className="text-xs text-gray-500">Performance Index</div>
+                                                    <div className={`text-xs ${shop.performanceScore > 50 ? 'text-green-600' : shop.performanceScore > 20 ? 'text-orange-600' : 'text-red-600'}`}>
+                                                        {shop.performanceScore > 50 ? '🟢 Excellent' : shop.performanceScore > 20 ? '🟡 Good' : '🔴 Needs attention'}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Affiliate Insights Section */}
+                    <div className="bg-white rounded-xl shadow-lg border overflow-hidden">
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">📈 Complete Affiliate Insights</h2>
+                            <p className="text-gray-600">Comprehensive analysis of affiliate performance and customer acquisition</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 text-xs text-gray-700 uppercase">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left">Affiliate Details</th>
+                                        <th className="px-6 py-3 text-left">Promotion Activity</th>
+                                        <th className="px-6 py-3 text-left">Customer Quality</th>
+                                        <th className="px-6 py-3 text-left">Network Reach</th>
+                                        <th className="px-6 py-3 text-left">Earnings & Performance</th>
+                                        <th className="px-6 py-3 text-left">Network Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {intelligenceData.affiliateInsights.slice(0, 20).map((affiliate: any) => (
+                                        <tr key={affiliate.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="font-medium text-gray-900">{affiliate.name}</div>
+                                                    <div className="text-xs text-gray-500">{affiliate.email}</div>
+                                                    <div className="text-xs text-blue-600">{affiliate.credits.toLocaleString()} credits</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm">🎫 {affiliate.couponsPromoted} coupons promoted</div>
+                                                    <div className="text-sm">✅ {affiliate.totalConversions} conversions</div>
+                                                    <div className="text-xs text-gray-600">Success rate: {affiliate.totalConversions > 0 ? 'Active' : 'Inactive'}</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm">👥 {affiliate.uniqueCustomers} customers acquired</div>
+                                                    <div className="text-xs text-green-600">✅ {affiliate.customerQuality} verified</div>
+                                                    <div className="text-xs text-blue-600">Quality score: {affiliate.customerQuality > 0 ? 'High' : 'Standard'}</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm">🏪 {affiliate.shopsWorkedWith} shops partnered</div>
+                                                    <div className="text-xs text-purple-600">Network reach: {affiliate.shopsWorkedWith > 3 ? 'Wide' : affiliate.shopsWorkedWith > 1 ? 'Medium' : 'Limited'}</div>
+                                                    <div className="text-xs text-gray-600">Partnership diversity</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm font-medium text-green-600">💰 {affiliate.totalCommissionsEarned.toLocaleString()} earned</div>
+                                                    <div className="text-xs text-gray-600">Avg: {affiliate.avgCommissionPerConversion} per conversion</div>
+                                                    <div className="text-xs text-blue-600">Efficiency: {affiliate.totalConversions > 0 ? 'Profitable' : 'Building'}</div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="space-y-1">
+                                                    <div className="text-lg font-bold text-indigo-600">{affiliate.networkValue.toFixed(0)}</div>
+                                                    <div className="text-xs text-gray-500">Network Value Index</div>
+                                                    <div className={`text-xs ${affiliate.networkValue > 100 ? 'text-green-600' : affiliate.networkValue > 50 ? 'text-orange-600' : 'text-red-600'}`}>
+                                                        {affiliate.networkValue > 100 ? '🟢 High value' : affiliate.networkValue > 50 ? '🟡 Growing' : '🔴 Developing'}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Customer Analytics Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-xl shadow-lg border overflow-hidden">
+                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 border-b">
+                                <h3 className="text-xl font-bold text-gray-800 mb-2">👥 Customer Analytics</h3>
+                                <p className="text-gray-600">Complete customer behavior and demographic analysis</p>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-blue-50 p-4 rounded-lg">
+                                        <div className="text-2xl font-bold text-blue-600">{intelligenceData.customerAnalytics.totalUniqueCustomers}</div>
+                                        <div className="text-sm text-blue-800">Total Unique Customers</div>
+                                    </div>
+                                    <div className="bg-green-50 p-4 rounded-lg">
+                                        <div className="text-2xl font-bold text-green-600">{intelligenceData.customerAnalytics.verifiedCustomers}</div>
+                                        <div className="text-sm text-green-800">Verified Customers</div>
+                                    </div>
+                                    <div className="bg-purple-50 p-4 rounded-lg">
+                                        <div className="text-2xl font-bold text-purple-600">{intelligenceData.customerAnalytics.completeProfiles}</div>
+                                        <div className="text-sm text-purple-800">Complete Profiles</div>
+                                    </div>
+                                    <div className="bg-orange-50 p-4 rounded-lg">
+                                        <div className="text-2xl font-bold text-orange-600">{intelligenceData.customerAnalytics.avgRedemptionsPerCustomer}</div>
+                                        <div className="text-sm text-orange-800">Avg Redemptions/Customer</div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6">
+                                    <h4 className="font-semibold text-gray-800 mb-3">Customer Journey Analysis</h4>
+                                    <div className="space-y-2">
+                                        {Object.entries(intelligenceData.customerAnalytics.customerJourney || {}).map(([source, count]) => (
+                                            <div key={source} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                                                <span className="capitalize">{source} Customers</span>
+                                                <span className="font-medium">{count as number}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-lg border overflow-hidden">
+                            <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 border-b">
+                                <h3 className="text-xl font-bold text-gray-800 mb-2">🎯 Top Performing Coupons</h3>
+                                <p className="text-gray-600">Highest converting coupons across all shops</p>
+                            </div>
+                            <div className="p-6">
+                                <div className="space-y-3">
+                                    {intelligenceData.globalAnalytics.topPerformingCoupons.slice(0, 8).map((coupon: any, index: number) => (
+                                        <div key={coupon.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-blue-500'}`}>
+                                                    {index + 1}
+                                                </div>
+                                                <div>
+                                                    <div className="font-medium text-gray-900">{coupon.title}</div>
+                                                    <div className="text-xs text-gray-500">by {coupon.shopOwnerName}</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="font-medium text-green-600">{coupon.redemptionCount} redemptions</div>
+                                                <div className="text-xs text-blue-600">{coupon.conversionRate}% conv. rate</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Growth Metrics */}
+                    <div className="bg-white rounded-xl shadow-lg border overflow-hidden">
+                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 border-b">
+                            <h3 className="text-xl font-bold text-gray-800 mb-2">📈 Growth & Performance Metrics</h3>
+                            <p className="text-gray-600">Real-time system growth and health indicators</p>
+                        </div>
+                        <div className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="text-center">
+                                    <div className="text-3xl font-bold text-blue-600">{intelligenceData.globalAnalytics.growthMetrics.monthlyRedemptions}</div>
+                                    <div className="text-sm text-gray-600">This Month's Redemptions</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-3xl font-bold text-green-600">{intelligenceData.globalAnalytics.growthMetrics.weeklyRedemptions}</div>
+                                    <div className="text-sm text-gray-600">This Week's Redemptions</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-3xl font-bold text-purple-600">{intelligenceData.globalAnalytics.growthMetrics.monthlyNewCustomers}</div>
+                                    <div className="text-sm text-gray-600">New Customers This Month</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-3xl font-bold text-orange-600">{intelligenceData.globalAnalytics.growthMetrics.avgDailyRedemptions}</div>
+                                    <div className="text-sm text-gray-600">Avg Daily Redemptions</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {!busy && !intelligenceData.globalAnalytics && (
+                <div className="bg-white rounded-xl shadow-lg border p-12 text-center">
+                    <div className="text-gray-400 text-6xl mb-4">📊</div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">No Intelligence Data Available</h3>
+                    <p className="text-gray-600 mb-4">Click "Refresh Data" to load comprehensive analytics</p>
+                    <button
+                        onClick={fetchIntelligenceData}
+                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-medium"
+                    >
+                        🔄 Load Intelligence Data
+                    </button>
+                </div>
+            )}
+        </div>
     );
 
     const settingsContent = (
