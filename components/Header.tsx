@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import KobonzLogo from './KobonzLogo';
 
 const Header: React.FC = () => {
   const { user, logout, isSuperAdmin } = useAuth();
@@ -26,12 +27,15 @@ const Header: React.FC = () => {
         <div className="flex justify-between items-center h-14 sm:h-16">
           {/* Logo */}
           <div className="flex items-center flex-shrink-0">
-            <Link to="/" className="flex items-center space-x-2" onClick={closeMobileMenu}>
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xs sm:text-sm">CC</span>
+            <Link to="/" className="flex items-center" onClick={closeMobileMenu}>
+              {/* Desktop - Show full logo with text */}
+              <div className="hidden sm:block">
+                <KobonzLogo size="sm" variant="full" />
               </div>
-              <span className="text-lg sm:text-xl font-bold text-gray-900 hidden sm:block">CodeCraft</span>
-              <span className="text-lg font-bold text-gray-900 sm:hidden">CC</span>
+              {/* Mobile - Show icon only */}
+              <div className="block sm:hidden">
+                <KobonzLogo size="sm" variant="icon" showText={false} />
+              </div>
             </Link>
           </div>
 
@@ -39,6 +43,9 @@ const Header: React.FC = () => {
           <nav className="hidden lg:flex space-x-6 xl:space-x-8 items-center">
             <Link to="/marketplace" className="text-gray-600 hover:text-gray-900 font-medium transition-colors whitespace-nowrap">
               {t('header.marketplace')}
+            </Link>
+            <Link to="/locations" className="text-gray-600 hover:text-gray-900 font-medium transition-colors whitespace-nowrap">
+              🌍 Locations
             </Link>
             
             {/* Desktop Language Switcher */}
@@ -144,6 +151,14 @@ const Header: React.FC = () => {
                 onClick={closeMobileMenu}
               >
                 {t('header.marketplace')}
+              </Link>
+              
+              <Link
+                to="/locations"
+                className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+                onClick={closeMobileMenu}
+              >
+                🌍 Locations
               </Link>
 
               {/* Mobile Language Switcher */}

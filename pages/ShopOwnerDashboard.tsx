@@ -11,6 +11,7 @@ import { TicketIcon, GiftIcon, BanknotesIcon, EyeIcon, CreditCardIcon, KeyIcon, 
 import { useTranslation } from '../hooks/useTranslation';
 import CouponCard from '../components/CouponCard';
 import QRCodeModal from '../components/QRCodeModal';
+import LocationSelector from '../components/LocationSelector';
 
 const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponCreated }) => {
     const { user } = useAuth();
@@ -26,14 +27,22 @@ const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponC
     const [affiliateCommission, setAffiliateCommission] = useState(5);
     const [customerRewardPoints, setCustomerRewardPoints] = useState(10);
     
+    // Location states
+    const [countries, setCountries] = useState<string[]>([]);
+    const [cities, setCities] = useState<string[]>([]);
+    const [areas, setAreas] = useState<string[]>([]);
+    const [isGlobal, setIsGlobal] = useState(true); // Default to global
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
         setIsSubmitting(true);
         setError('');
+        
         try {
             // Prepare coupon data with proper sanitization - this prevents undefined values
             const rawCouponData: Partial<CreateCouponData> = {
@@ -47,7 +56,12 @@ const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponC
                 expiryDate: validityType === 'expiryDate' ? expiryDate : undefined,
                 validityDays: validityType === 'days' ? validityDays : undefined,
                 affiliateCommission,
-                customerRewardPoints
+                customerRewardPoints,
+                // Location data
+                countries: isGlobal ? [] : countries,
+                cities: isGlobal ? [] : cities,
+                areas: isGlobal ? [] : areas,
+                isGlobal: isGlobal
             };
 
             // Validate and sanitize the data to ensure no undefined fields
@@ -59,9 +73,15 @@ const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponC
             const newCouponData = prepareCouponData(rawCouponData);
             await api.createCoupon(newCouponData, user);
             onCouponCreated();
+            
             // Reset form
             setTitle('');
             setDescription('');
+            setCountries([]);
+            setCities([]);
+            setAreas([]);
+            setIsGlobal(true);
+            
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -142,6 +162,25 @@ const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponC
                     placeholder="Points awarded to customer who redeems this coupon"
                 />
                 <p className="text-xs text-gray-500 mt-1">Points credited to customer when they redeem this coupon</p>
+            </div>
+
+            {/* Location Selector */}
+            <div className="border-t pt-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    🌍 Coupon Location Settings
+                </label>
+                <LocationSelector
+                    selectedCountries={countries}
+                    selectedCities={cities}
+                    selectedAreas={areas}
+                    isGlobal={isGlobal}
+                    onChange={(locationData) => {
+                        setCountries(locationData.countries);
+                        setCities(locationData.cities);
+                        setAreas(locationData.areas);
+                        setIsGlobal(locationData.isGlobal);
+                    }}
+                />
             </div>
 
             {error && <p className="text-alert text-sm">{error}</p>}

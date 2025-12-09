@@ -281,6 +281,11 @@ export const api = {
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(fromFirestore) as Coupon[];
     },
+    
+    // Alias for consistency
+    getCoupons: async (): Promise<Coupon[]> => {
+        return api.getAllCoupons();
+    },
 
     getCouponsForShop: async (shopOwnerId: string): Promise<Coupon[]> => {
         const q = query(collection(db, "coupons"), where("shopOwnerId", "==", shopOwnerId));
@@ -611,6 +616,7 @@ export const api = {
             }
         }
     },
+
     
     createCoupon: async (data: CreateCouponData, shopOwner: Shop): Promise<Coupon> => {
         // Fixed cost: 50 credits per coupon
@@ -629,6 +635,7 @@ export const api = {
         if (shopOwner.credits < couponCost) {
             throw new Error(`Insufficient credits. Need ${couponCost} credits to create a coupon but you have ${shopOwner.credits}. Please request more credits.`);
         }
+
 
         // Create coupon and deduct credits in a transaction
         return await runTransaction(db, async (transaction) => {

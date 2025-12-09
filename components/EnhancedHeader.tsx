@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icons } from './IconLibrary';
 import { useNotifications } from './NotificationSystem';
+import KobonzLogo from './KobonzLogo';
 
 interface HeaderNotification {
     id: string;
@@ -95,9 +96,10 @@ const EnhancedHeader: React.FC<EnhancedHeaderProps> = ({
                     {/* Left Section */}
                     <div className="flex items-center space-x-6">
                         {/* Logo */}
-                        <Link to="/" className="flex items-center space-x-2 group">
-                            <Icons.Rocket size="lg" color="primary" className="group-hover:scale-110 transition-transform" />
-                            <span className="text-xl font-bold text-gray-900">CodeCraft</span>
+                        <Link to="/" className="flex items-center group">
+                            <div className="group-hover:scale-105 transition-transform">
+                                <KobonzLogo size="md" variant="full" />
+                            </div>
                         </Link>
 
                         {/* Search */}

@@ -2,7 +2,7 @@
 import React from 'react';
 import { Coupon } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
-import { CalendarDaysIcon, CheckBadgeIcon, EyeIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { CalendarDaysIcon, CheckBadgeIcon, EyeIcon, SparklesIcon, MapPinIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 
 interface CouponCardProps {
     coupon: Coupon;
@@ -56,6 +56,7 @@ const CouponCard: React.FC<CouponCardProps> = ({ coupon, children, showAffiliate
                     <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${statusColor} whitespace-nowrap`}>{status}</span>
                 </div>
                 <p className="text-sm text-gray-500 mb-4">by {coupon.shopOwnerName}</p>
+                
                 <p className="text-sm text-gray-600 mb-4 min-h-[40px]">{coupon.description}</p>
                 
                 <div className="bg-gradient-to-r from-primary/10 to-blue-500/10 p-4 rounded-lg text-center mb-4">
@@ -75,6 +76,43 @@ const CouponCard: React.FC<CouponCardProps> = ({ coupon, children, showAffiliate
                         <EyeIcon className="h-5 w-5 text-gray-400" />
                         <span>{coupon.clicks} {t('couponCard.views')}</span>
                     </div>
+                    {/* Location Information */}
+                    {coupon.isGlobal ? (
+                        <div className="flex items-center gap-2 text-blue-600 font-medium">
+                            <GlobeAltIcon className="h-5 w-5" />
+                            <span>Valid Globally</span>
+                        </div>
+                    ) : (
+                        <>
+                            {coupon.countries && coupon.countries.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <MapPinIcon className="h-5 w-5 text-purple-500" />
+                                    <span className="text-xs">
+                                        {coupon.countries.slice(0, 2).join(', ')}
+                                        {coupon.countries.length > 2 && ` +${coupon.countries.length - 2} more`}
+                                    </span>
+                                </div>
+                            )}
+                            {coupon.cities && coupon.cities.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <MapPinIcon className="h-5 w-5 text-blue-500" />
+                                    <span className="text-xs">
+                                        {coupon.cities.slice(0, 2).join(', ')}
+                                        {coupon.cities.length > 2 && ` +${coupon.cities.length - 2} more`}
+                                    </span>
+                                </div>
+                            )}
+                            {coupon.areas && coupon.areas.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <MapPinIcon className="h-5 w-5 text-pink-500" />
+                                    <span className="text-xs">
+                                        {coupon.areas.slice(0, 2).join(', ')}
+                                        {coupon.areas.length > 2 && ` +${coupon.areas.length - 2} more`}
+                                    </span>
+                                </div>
+                            )}
+                        </>
+                    )}
                     {showAffiliateCommission && coupon.affiliateCommission > 0 && (
                         <div className="flex items-center gap-2 pt-2 text-success font-semibold border-t border-dashed mt-3">
                             <SparklesIcon className="h-5 w-5" />

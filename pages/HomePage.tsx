@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from '../hooks/useTranslation';
-import { SparklesIcon, ShareIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, ShareIcon, RocketLaunchIcon, MapPinIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 
 const CouponGenerator: React.FC = () => {
     const { t } = useTranslation();
@@ -32,6 +32,12 @@ const HomePage: React.FC = () => {
         { label: t('home.metrics.shops'), value: '3,200+' },
         { label: t('home.metrics.coupons'), value: '12,500+' },
         { label: t('home.metrics.redemptions'), value: '57,800+' },
+    ];
+    
+    const locationStats = [
+        { icon: <GlobeAltIcon className="h-8 w-8" />, label: 'Countries', value: '25+', color: 'blue' },
+        { icon: <MapPinIcon className="h-8 w-8" />, label: 'Major Cities', value: '150+', color: 'purple' },
+        { icon: <MapPinIcon className="h-8 w-8" />, label: 'Local Areas', value: '1000+', color: 'pink' },
     ];
 
     const benefits = [
@@ -86,6 +92,9 @@ const HomePage: React.FC = () => {
                         </Link>
                         <Link to="/marketplace" className="btn-secondary">
                             {t('home.hero.secondaryCta')}
+                        </Link>
+                        <Link to="/locations" className="btn-secondary bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90">
+                            🌍 Browse by Location
                         </Link>
                     </div>
                 </div>
@@ -207,6 +216,41 @@ const HomePage: React.FC = () => {
                         ))}
                     </div>
                 </div>
+            </section>
+
+            {/* NEW: Global Location Coverage Section */}
+            <section className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-3xl p-10 md:p-16">
+                <div className="text-center mb-12">
+                    <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                        🌍 Global Coverage, Local Deals
+                    </h2>
+                    <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                        Discover amazing deals from <strong>25+ countries</strong>, <strong>150+ cities</strong>, and <strong>1000+ local areas</strong> worldwide
+                    </p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                    {locationStats.map((stat) => (
+                        <div key={stat.label} className="bg-white rounded-2xl p-8 text-center shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                            <div className={`inline-flex p-4 rounded-full bg-${stat.color}-100 text-${stat.color}-600 mb-4`}>
+                                {stat.icon}
+                            </div>
+                            <div className="text-4xl font-bold text-gray-800 mb-2">{stat.value}</div>
+                            <div className="text-gray-600 font-medium">{stat.label}</div>
+                        </div>
+                    ))}
+                </div>
+                
+                <div className="text-center">
+                    <Link 
+                        to="/locations" 
+                        className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-lg font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+                    >
+                        <MapPinIcon className="h-6 w-6" />
+                        Explore All Locations
+                    </Link>
+                </div>
+                
             </section>
 
             <section className="space-y-12">

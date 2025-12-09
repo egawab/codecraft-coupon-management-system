@@ -41,6 +41,12 @@ export interface Coupon {
   validityDays?: number;
   affiliateCommission: number; // in credits
   customerRewardPoints: number; // Points awarded to customer who redeems
+  
+  // Location fields for coupon filtering
+  countries?: string[]; // List of countries where coupon is valid, empty = global
+  cities?: string[]; // Specific cities where valid
+  areas?: string[]; // Specific areas/districts where valid
+  isGlobal?: boolean; // If true, valid everywhere
 }
 
 export interface CreateCouponData {
@@ -66,6 +72,11 @@ export interface CreateCouponData {
   affiliateCommission: number;
   customerRewardPoints: number;
   creationCost?: number; // Cost to create this coupon
+  // Location fields
+  countries?: string[];
+  cities?: string[];
+  areas?: string[];
+  isGlobal?: boolean;
 }
 
 /**

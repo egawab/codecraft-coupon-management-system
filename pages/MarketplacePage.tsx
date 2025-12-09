@@ -17,6 +17,7 @@ import {
     BuildingStorefrontIcon,
     SparklesIcon
 } from '@heroicons/react/24/outline';
+import { getAllCountries, getCitiesForCountryAsync } from '../utils/countryData';
 
 type ViewMode = 'marketplace' | 'shop-details';
 
@@ -35,6 +36,10 @@ const MarketplacePage: React.FC = () => {
     const [countryFilter, setCountryFilter] = useState('');
     const [cityFilter, setCityFilter] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('');
+    
+    // All available locations from system
+    const [allSystemCountries] = useState<string[]>(getAllCountries());
+    const [allSystemCities, setAllSystemCities] = useState<string[]>([]);
 
     useEffect(() => {
         const fetchShops = async () => {
@@ -58,6 +63,32 @@ const MarketplacePage: React.FC = () => {
 
         fetchShops();
     }, []);
+
+    // Load cities when country filter changes
+    useEffect(() => {
+        const loadCities = async () => {
+            if (countryFilter) {
+                // Load cities for selected country
+                const cities = await getCitiesForCountryAsync(countryFilter);
+                setAllSystemCities(cities);
+                // Reset city filter if it's not valid for the new country
+                if (cityFilter && !cities.includes(cityFilter)) {
+                    setCityFilter('');
+                }
+            } else {
+                // Load all cities from all countries when no country is selected
+                const allCities: string[] = [];
+                for (const country of allSystemCountries) {
+                    const cities = await getCitiesForCountryAsync(country);
+                    allCities.push(...cities);
+                }
+                // Remove duplicates and sort
+                setAllSystemCities([...new Set(allCities)].sort());
+            }
+        };
+        
+        loadCities();
+    }, [countryFilter, allSystemCountries, cityFilter]);
 
     useEffect(() => {
         let filtered = shops;
@@ -136,8 +167,6 @@ const MarketplacePage: React.FC = () => {
     }
 
     // Get unique values for filters
-    const countries = [...new Set(shops.map(shop => shop.country).filter(Boolean))];
-    const cities = [...new Set(shops.map(shop => shop.city).filter(Boolean))];
     const categories = [...new Set(shops.map(shop => shop.category).filter(Boolean))];
 
     if (viewMode === 'shop-details' && selectedShop) {
@@ -366,13 +395,13 @@ const MarketplacePage: React.FC = () => {
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Enhanced Search and Filters */}
                 <div className="glass-panel p-6 mb-8 animate-slideInUp">
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* Search */}
-                        <div className="lg:col-span-2 relative">
+                        <div className="md:col-span-2 lg:col-span-1 relative">
                             <MagnifyingGlassIcon className="h-5 w-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="Search shops, categories, or deals..."
+                                placeholder="Search shops..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="form-input pl-12 w-full"
@@ -380,40 +409,52 @@ const MarketplacePage: React.FC = () => {
                         </div>
 
                         {/* Country Filter */}
-                        <select 
-                            value={countryFilter} 
-                            onChange={(e) => setCountryFilter(e.target.value)}
-                            className="form-input"
-                        >
-                            <option value="">All Countries</option>
-                            {countries.map(country => (
-                                <option key={country} value={country}>{country}</option>
-                            ))}
-                        </select>
+                        <div className="relative">
+                            <MapPinIcon className="h-5 w-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <select 
+                                value={countryFilter} 
+                                onChange={(e) => setCountryFilter(e.target.value)}
+                                className="form-input pl-12 w-full appearance-none cursor-pointer"
+                            >
+                                <option value="">All Countries</option>
+                                {allSystemCountries.map(country => (
+                                    <option key={country} value={country}>{country}</option>
+                                ))}
+                            </select>
+                        </div>
 
                         {/* City Filter */}
-                        <select 
-                            value={cityFilter} 
-                            onChange={(e) => setCityFilter(e.target.value)}
-                            className="form-input"
-                        >
-                            <option value="">All Cities</option>
-                            {cities.map(city => (
-                                <option key={city} value={city}>{city}</option>
-                            ))}
-                        </select>
+                        <div className="relative">
+                            <MapPinIcon className="h-5 w-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <select 
+                                value={cityFilter} 
+                                onChange={(e) => setCityFilter(e.target.value)}
+                                className="form-input pl-12 w-full appearance-none cursor-pointer"
+                                disabled={allSystemCities.length === 0}
+                            >
+                                <option value="">
+                                    {allSystemCities.length === 0 ? 'Loading cities...' : 'All Cities'}
+                                </option>
+                                {allSystemCities.map(city => (
+                                    <option key={city} value={city}>{city}</option>
+                                ))}
+                            </select>
+                        </div>
 
                         {/* Category Filter */}
-                        <select 
-                            value={categoryFilter} 
-                            onChange={(e) => setCategoryFilter(e.target.value)}
-                            className="form-input"
-                        >
-                            <option value="">All Categories</option>
-                            {categories.map(category => (
-                                <option key={category} value={category}>{category}</option>
-                            ))}
-                        </select>
+                        <div className="relative">
+                            <TagIcon className="h-5 w-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <select 
+                                value={categoryFilter} 
+                                onChange={(e) => setCategoryFilter(e.target.value)}
+                                className="form-input pl-12 w-full appearance-none cursor-pointer"
+                            >
+                                <option value="">All Categories</option>
+                                {categories.sort().map(category => (
+                                    <option key={category} value={category}>{category}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
 

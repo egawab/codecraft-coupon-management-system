@@ -301,19 +301,64 @@ export const countryData = {
   }
 };
 
+// Import the new global location system
+import * as GlobalLocations from './locationData/index';
+
+/**
+ * BACKWARD COMPATIBILITY LAYER
+ * These functions maintain the existing API while supporting the new global system
+ */
+
+/**
+ * Get all countries (195+ countries from the global system)
+ * Now returns ALL countries worldwide, not just the core 34
+ */
 export const getAllCountries = (): string[] => {
-  return Object.keys(countryData);
+  return GlobalLocations.getAllCountries();
 };
 
+/**
+ * Get cities for a country (synchronous for core countries, returns empty for others)
+ * For non-core countries, use async version from locationData/index
+ */
 export const getCitiesForCountry = (country: string): string[] => {
+  // Check if it's a core country first
   const countryInfo = countryData[country as keyof typeof countryData];
-  return countryInfo ? Object.keys(countryInfo.cities) : [];
+  if (countryInfo) {
+    return Object.keys(countryInfo.cities);
+  }
+  
+  // For non-core countries, return empty (use async version instead)
+  return [];
 };
 
+/**
+ * Get districts for a city (synchronous for core countries, returns empty for others)
+ * For non-core countries, use async version from locationData/index
+ */
 export const getDistrictsForCity = (country: string, city: string): string[] => {
   const countryInfo = countryData[country as keyof typeof countryData];
   if (!countryInfo) return [];
   
   const cityInfo = countryInfo.cities[city as keyof typeof countryInfo.cities];
   return cityInfo || [];
+};
+
+/**
+ * Check if a country is in the core set (immediately available without loading)
+ */
+export const isCoreCountry = (country: string): boolean => {
+  return GlobalLocations.isCoreCountry(country);
+};
+
+/**
+ * ASYNC VERSIONS (Recommended for all countries including core)
+ * These work for ALL 195+ countries with lazy loading
+ */
+export const getCitiesForCountryAsync = async (country: string): Promise<string[]> => {
+  return await GlobalLocations.getCitiesForCountry(country);
+};
+
+export const getDistrictsForCityAsync = async (country: string, city: string): Promise<string[]> => {
+  return await GlobalLocations.getDistrictsForCity(country, city);
 };

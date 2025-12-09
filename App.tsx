@@ -23,10 +23,12 @@ import LegalPage from './pages/LegalPage';
 import CookieBanner from './components/CookieBanner';
 import ProfilePage from './pages/ProfilePage';
 import PublicCouponPage from './pages/PublicCouponPage';
+import LocationBrowser from './components/LocationBrowser';
+import LocationCouponsPage from './pages/LocationCouponsPage';
 
 const App: React.FC = () => {
   const { user, isSuperAdmin } = useAuth();
-  const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@codecraft.com';
+  const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@kobonz.site';
 
   const isAdminUser = user?.roles.includes('admin') && user.email === ADMIN_EMAIL;
 
@@ -108,6 +110,12 @@ const App: React.FC = () => {
             <Route path="/affiliate-network" element={<AffiliateNetworkPage />} />
             <Route path="/marketplace" element={<MarketplacePage />} />
             <Route path="/legal" element={<LegalPage />} />
+            
+            {/* Location Browser Routes */}
+            <Route path="/locations" element={<LocationBrowser />} />
+            <Route path="/locations/:country" element={<LocationCouponsPage />} />
+            <Route path="/locations/:country/:city" element={<LocationCouponsPage />} />
+            <Route path="/locations/:country/:city/:area" element={<LocationCouponsPage />} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

@@ -1,4 +1,4 @@
-# 🎟️ CodeCraft - Advanced Coupon Management System
+# 🎟️ Kobonz - Advanced Coupon Management System
 
 A sophisticated B2B coupon management platform built with React, TypeScript, and Firebase. Enables merchants to create, distribute, and track discount coupons while building a network-based economy through referrals and affiliate commissions.
 

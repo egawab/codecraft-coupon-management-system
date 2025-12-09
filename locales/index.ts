@@ -40,7 +40,7 @@ export const translations = {
         redemptions: "Successful redemptions"
       },
       benefits: {
-        title: "Why CodeCraft",
+        title: "Why Kobonz",
         description: "Everything you need to launch, measure, and scale B2B coupon partnerships from one dashboard.",
         items: [
           {
@@ -85,7 +85,7 @@ export const translations = {
       }
     },
     loginPage: {
-      title: "Join CodeCraft",
+      title: "Join Kobonz",
       subtitle: "Access your dashboard or create a new account",
       toggleToSignup: "Need an account? Sign up",
       toggleToLogin: "Already have an account? Sign in",
@@ -222,7 +222,7 @@ export const translations = {
     },
     partnerPage: {
       hero: {
-        title: "Partner With CodeCraft",
+        title: "Partner With Kobonz",
         subtitle: "Join our network and unlock new revenue streams through strategic partnerships"
       },
       benefits: {
@@ -315,7 +315,7 @@ export const translations = {
         title: "No coupons available yet"
       }
     },
-    CodeCraft: "CodeCraft",
+    Kobonz: "Kobonz",
     English: "English",
     "by store": "by store",
     "Customer earns": "Customer earns",
@@ -389,7 +389,7 @@ export const translations = {
         redemptions: "استردادات ناجحة"
       },
       benefits: {
-        title: "لماذا CodeCraft",
+        title: "لماذا Kobonz",
         description: "كل ما تحتاجه لإطلاق وقياس وتوسيع شراكات القسائم B2B من لوحة تحكم واحدة.",
         items: [
           {
@@ -434,7 +434,7 @@ export const translations = {
       }
     },
     loginPage: {
-      title: "انضم إلى CodeCraft",
+      title: "انضم إلى Kobonz",
       subtitle: "ادخل إلى لوحة التحكم أو أنشئ حساب جديد",
       toggleToSignup: "تحتاج حساب؟ سجل",
       toggleToLogin: "لديك حساب بالفعل؟ سجل دخول",
@@ -567,7 +567,7 @@ export const translations = {
     },
     partnerPage: {
       hero: {
-        title: "شراكة مع CodeCraft",
+        title: "شراكة مع Kobonz",
         subtitle: "انضم إلى شبكتنا واكتشف مصادر دخل جديدة من خلال الشراكات الاستراتيجية"
       },
       benefits: {
@@ -660,7 +660,7 @@ export const translations = {
         title: "لا توجد قسائم متاحة حتى الآن"
       }
     },
-    CodeCraft: "CodeCraft",
+    Kobonz: "Kobonz",
     English: "العربية",
     "by store": "من المتجر",
     "Customer earns": "العميل يكسب",
