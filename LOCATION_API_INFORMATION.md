@@ -11,7 +11,11 @@
 ## 📋 Service Details
 
 ### What is GeoNames?
-GeoNames is a geographical database that covers all countries and contains over eleven million place names. It provides free access to location data including:
+GeoNames is a geographical database that covers all countries and contains over eleven million place names. 
+
+**Service Model:** GeoNames offers both **FREE and PAID plans**. We are using the **FREE plan**, which is completely free with no charges and is fully sufficient for our project needs.
+
+The free plan provides access to:
 
 - **195+ Countries** - All countries worldwide
 - **4+ Million Cities** - Major and minor cities globally

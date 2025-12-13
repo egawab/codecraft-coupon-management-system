@@ -21,7 +21,8 @@ import {
     Cog6ToothIcon,
     AdjustmentsHorizontalIcon,
     TableCellsIcon,
-    SignalIcon
+    SignalIcon,
+    UserCircleIcon
 } from '@heroicons/react/24/outline';
 import { useTranslation } from '../hooks/useTranslation';
 import { logger } from '../utils/logger';
@@ -35,8 +36,9 @@ import EnhancedSearch from '../components/EnhancedSearch';
 import { logger } from '../utils/logger';
 import Tooltip, { HelpTooltip } from '../components/Tooltip';
 import { logger } from '../utils/logger';
+import { AdminUserManagement } from '../components/AdminUserManagement';
 
-type AdminTab = 'overview' | 'shops' | 'affiliates' | 'coupons' | 'redemptions' | 'referrals' | 'intelligence' | 'settings';
+type AdminTab = 'overview' | 'users' | 'shops' | 'affiliates' | 'coupons' | 'redemptions' | 'referrals' | 'intelligence' | 'settings';
 
 const AdminDashboard: React.FC = () => {
     const { user } = useAuth();
@@ -149,6 +151,7 @@ const AdminDashboard: React.FC = () => {
 
     const tabs = [
         { id: 'overview' as AdminTab, label: 'Overview', icon: <TableCellsIcon className="h-4 w-4" /> },
+        { id: 'users' as AdminTab, label: 'User Management', icon: <UserCircleIcon className="h-4 w-4" /> },
         { id: 'shops' as AdminTab, label: 'Shop Owners', icon: <UserGroupIcon className="h-4 w-4" /> },
         { id: 'affiliates' as AdminTab, label: 'Affiliates', icon: <AdjustmentsHorizontalIcon className="h-4 w-4" /> },
         { id: 'coupons' as AdminTab, label: 'Coupons', icon: <TicketIcon className="h-4 w-4" /> },
@@ -484,6 +487,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
 
                     {activeTab === 'overview' && overviewContent}
+                    {activeTab === 'users' && <AdminUserManagement />}
                     {activeTab === 'shops' && (
                         <div className="bg-white rounded-xl shadow-lg border overflow-hidden p-6">
                             <h2 className="text-2xl font-bold text-gray-800">Shop Owners Management</h2>
