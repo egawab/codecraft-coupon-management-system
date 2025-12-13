@@ -1,4 +1,6 @@
 // Country and city data for dynamic selectors
+import * as GlobalLocations from './locationData/index';
+
 export const countryData = {
   "United States": {
     cities: {
@@ -302,7 +304,6 @@ export const countryData = {
 };
 
 // Import the new global location system
-import * as GlobalLocations from './locationData/index';
 
 /**
  * BACKWARD COMPATIBILITY LAYER

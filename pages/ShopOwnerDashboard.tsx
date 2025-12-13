@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRealTimeTracking } from '../hooks/useRealTimeTracking';
 import { Link } from 'react-router-dom';

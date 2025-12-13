@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { logger } from '../utils/logger';
 import { collection, onSnapshot, query, orderBy, where, limit, addDoc, serverTimestamp } from 'firebase/firestore';
-import { logger } from '../utils/logger';
 import { db } from '../firebase';
 import { logger } from '../utils/logger';
 

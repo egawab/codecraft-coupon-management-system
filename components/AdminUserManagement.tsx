@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, deleteDoc, updateDoc, Timestamp, Firestore } from 'firebase/firestore';
 import { db } from '../firebase';
-import { UserCircleIcon, TrashIcon, ShieldCheckIcon, BuildingStorefrontIcon, CurrencyDollarIcon, UserIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { UserCircleIcon, TrashIcon, ShieldCheckIcon, BuildingStorefrontIcon, CurrencyDollarIcon, UserIcon, MagnifyingGlassIcon, FunnelIcon, XMarkIcon, ClockIcon, NoSymbolIcon } from '@heroicons/react/24/outline';
+import { Shop, Role } from '../types';
+import { logger } from '../utils/logger';
 
-interface User {
-  id: string;
-  email: string;
-  displayName: string;
-  role: 'shop_owner' | 'affiliate' | 'customer' | 'admin';
-  createdAt: any;
-  phoneNumber?: string;
-  shopName?: string;
-  referralCode?: string;
-  totalEarnings?: number;
-  isActive: boolean;
+interface UserData extends Omit<Shop, 'bannedUntil'> {
+  createdAt?: any;
+  bannedUntil?: string | Timestamp;
+  banReason?: string;
 }
 
 interface Coupon {
@@ -26,40 +21,70 @@ interface Coupon {
 }
 
 export const AdminUserManagement: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'user' | 'coupon'; id: string; name: string } | null>(null);
+  const [viewMode, setViewMode] = useState<'users' | 'coupons'>('users');
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [banPeriod, setBanPeriod] = useState<string>('7'); // days
+  const [banReason, setBanReason] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState(false);
 
-  // Load all users
+  // Load all users from shops collection
   const loadUsers = async () => {
     try {
-      const usersSnapshot = await getDocs(collection(db, 'users'));
-      const usersData = usersSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as User[];
+      const shopsSnapshot = await getDocs(collection(db as Firestore, 'shops'));
+      const usersData = shopsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data['name'] || '',
+          email: data['email'] || '',
+          roles: data['roles'] || [],
+          credits: data['credits'] || 0,
+          referralCode: data['referralCode'] || '',
+          referredBy: data['referredBy'],
+          hasRedeemedFirstCoupon: data['hasRedeemedFirstCoupon'] || false,
+          country: data['country'] || '',
+          city: data['city'] || '',
+          category: data['category'] || '',
+          district: data['district'] || '',
+          shopDescription: data['shopDescription'] || '',
+          addressLine1: data['addressLine1'] || '',
+          addressLine2: data['addressLine2'] || '',
+          state: data['state'] || '',
+          postalCode: data['postalCode'] || '',
+          bannedUntil: data['bannedUntil'],
+          banReason: data['banReason'] || '',
+          createdAt: data['createdAt'],
+          isActive: data['isActive'] !== false
+        };
+      }) as UserData[];
       setUsers(usersData);
     } catch (error) {
-      console.error('Error loading users:', error);
+      logger.error('Error loading users:', error);
     }
   };
 
-  // Load all coupons
+  // Load all coupons with retry logic
   const loadCoupons = async () => {
     try {
-      const couponsSnapshot = await getDocs(collection(db, 'coupons'));
+      // Disable real-time listeners to avoid QUIC errors
+      const couponsSnapshot = await getDocs(collection(db as Firestore, 'coupons'));
       const couponsData = couponsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Coupon[];
       setCoupons(couponsData);
+      logger.debug('Loaded coupons successfully', { count: couponsData.length });
     } catch (error) {
-      console.error('Error loading coupons:', error);
+      logger.error('Error loading coupons:', error);
+      alert('Error loading coupons. Please refresh the page.');
     }
   };
 
@@ -72,97 +97,202 @@ export const AdminUserManagement: React.FC = () => {
     loadData();
   }, []);
 
+  // Check if user is currently banned
+  const isUserBanned = (user: UserData): boolean => {
+    if (!user.bannedUntil) return false;
+    const bannedUntil = user.bannedUntil instanceof Timestamp 
+      ? user.bannedUntil.toDate() 
+      : new Date(user.bannedUntil);
+    return bannedUntil > new Date();
+  };
+
+  // Get ban expiration date
+  const getBanExpiration = (user: UserData): string | null => {
+    if (!user.bannedUntil) return null;
+    const bannedUntil = user.bannedUntil instanceof Timestamp 
+      ? user.bannedUntil.toDate() 
+      : new Date(user.bannedUntil);
+    return bannedUntil.toLocaleString();
+  };
+
   // Filter users based on search and role
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.shopName?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+                         user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.shopDescription?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === 'all' || 
+                       user.roles.some(role => {
+                         const roleMap: Record<string, string> = {
+                           'shop-owner': 'shop_owner',
+                           'affiliate': 'affiliate',
+                           'user': 'customer',
+                           'admin': 'admin'
+                         };
+                         return roleMap[role] === roleFilter || role === roleFilter;
+                       });
     return matchesSearch && matchesRole;
   });
+
 
   // Get user's coupons
   const getUserCoupons = (userId: string) => {
     return coupons.filter(coupon => coupon.shopOwnerId === userId);
   };
 
-  // Delete user account
+  // Delete user account with better error handling
   const handleDeleteUser = async (userId: string) => {
     try {
-      // Delete user document
-      await deleteDoc(doc(db, 'users', userId));
+      setActionLoading(true);
+      logger.debug('Attempting to delete user', { userId });
       
-      // Delete all user's coupons
+      // Get user's coupons first
       const userCoupons = getUserCoupons(userId);
-      await Promise.all(
-        userCoupons.map(coupon => deleteDoc(doc(db, 'coupons', coupon.id)))
-      );
-
-      // Reload data
-      await loadUsers();
-      await loadCoupons();
+      logger.debug(`Found ${userCoupons.length} coupons to delete`, { userId, couponCount: userCoupons.length });
+      
+      // Delete all user's coupons first
+      for (const coupon of userCoupons) {
+        try {
+          await deleteDoc(doc(db as Firestore, 'coupons', coupon.id));
+          logger.debug('Deleted coupon', { couponId: coupon.id });
+        } catch (error) {
+          logger.error('Error deleting coupon', { couponId: coupon.id, error });
+        }
+      }
+      
+      // Delete user document from shops collection
+      await deleteDoc(doc(db as Firestore, 'shops', userId));
+      logger.debug('User document deleted');
+      
+      // Update local state immediately
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      setCoupons(prev => prev.filter(c => c.shopOwnerId !== userId));
+      
       setSelectedUser(null);
       setShowDeleteConfirm(false);
       setDeleteTarget(null);
-      alert('User and all associated data deleted successfully');
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      alert('Error deleting user');
+      alert(`✅ User and ${userCoupons.length} associated coupons deleted successfully`);
+      
+      // Reload in background
+      setTimeout(() => {
+        loadUsers();
+        loadCoupons();
+      }, 1000);
+    } catch (error: any) {
+      logger.error('Error deleting user:', error);
+      alert(`❌ Error deleting user: ${error.message || 'Unknown error'}`);
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  // Delete coupon
+  // Delete coupon with better error handling
   const handleDeleteCoupon = async (couponId: string) => {
     try {
-      await deleteDoc(doc(db, 'coupons', couponId));
-      await loadCoupons();
+      logger.debug('Attempting to delete coupon', { couponId });
+      await deleteDoc(doc(db as Firestore, 'coupons', couponId));
+      logger.debug('Coupon deleted successfully', { couponId });
+      
+      // Update local state immediately
+      setCoupons(prev => prev.filter(c => c.id !== couponId));
+      
       setShowDeleteConfirm(false);
       setDeleteTarget(null);
       alert('Coupon deleted successfully');
-    } catch (error) {
-      console.error('Error deleting coupon:', error);
-      alert('Error deleting coupon');
+      
+      // Reload in background
+      setTimeout(() => loadCoupons(), 1000);
+    } catch (error: any) {
+      logger.error('Error deleting coupon:', error);
+      alert(`Error deleting coupon: ${error.message || 'Unknown error'}`);
+    }
+  };
+
+  // Ban user for a specific period
+  const handleBanUser = async (userId: string) => {
+    if (!banPeriod || parseInt(banPeriod) <= 0) {
+      alert('Please enter a valid ban period (days)');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const days = parseInt(banPeriod);
+      const banExpiration = new Date();
+      banExpiration.setDate(banExpiration.getDate() + days);
+      
+      await updateDoc(doc(db as Firestore, 'shops', userId), {
+        bannedUntil: Timestamp.fromDate(banExpiration),
+        banReason: banReason || 'No reason provided'
+      });
+      
+      await loadUsers();
+      setShowBanModal(false);
+      setBanPeriod('7');
+      setBanReason('');
+      alert(`✅ User banned for ${days} day(s). Ban expires on ${banExpiration.toLocaleString()}`);
+    } catch (error: any) {
+      logger.error('Error banning user:', error);
+      alert(`❌ Error banning user: ${error.message || 'Unknown error'}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Unban user
+  const handleUnbanUser = async (userId: string) => {
+    try {
+      setActionLoading(true);
+      await updateDoc(doc(db as Firestore, 'shops', userId), {
+        bannedUntil: null,
+        banReason: null
+      });
+      
+      await loadUsers();
+      alert('✅ User unbanned successfully');
+    } catch (error: any) {
+      logger.error('Error unbanning user:', error);
+      alert(`❌ Error unbanning user: ${error.message || 'Unknown error'}`);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   // Toggle user active status
   const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      await updateDoc(doc(db, 'users', userId), {
+      setActionLoading(true);
+      await updateDoc(doc(db as Firestore, 'shops', userId), {
         isActive: !currentStatus
       });
       await loadUsers();
-      alert(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
-    } catch (error) {
-      console.error('Error updating user status:', error);
-      alert('Error updating user status');
+      alert(`✅ User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+    } catch (error: any) {
+      logger.error('Error updating user status:', error);
+      alert(`❌ Error updating user status: ${error.message || 'Unknown error'}`);
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'shop_owner':
-        return <BuildingStorefrontIcon className="h-5 w-5" />;
-      case 'affiliate':
-        return <CurrencyDollarIcon className="h-5 w-5" />;
-      case 'admin':
-        return <ShieldCheckIcon className="h-5 w-5" />;
-      default:
-        return <UserIcon className="h-5 w-5" />;
-    }
+  const getRoleIcon = (roles: Role[]) => {
+    if (roles.includes('admin')) return <ShieldCheckIcon className="h-5 w-5" />;
+    if (roles.includes('shop-owner')) return <BuildingStorefrontIcon className="h-5 w-5" />;
+    if (roles.includes('affiliate')) return <CurrencyDollarIcon className="h-5 w-5" />;
+    return <UserIcon className="h-5 w-5" />;
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'shop_owner':
-        return 'bg-blue-100 text-blue-800';
-      case 'affiliate':
-        return 'bg-green-100 text-green-800';
-      case 'admin':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const getRoleBadgeColor = (roles: Role[]) => {
+    if (roles.includes('admin')) return 'bg-purple-100 text-purple-800';
+    if (roles.includes('shop-owner')) return 'bg-blue-100 text-blue-800';
+    if (roles.includes('affiliate')) return 'bg-green-100 text-green-800';
+    return 'bg-gray-100 text-gray-800';
+  };
+
+  const getRoleDisplayName = (roles: Role[]): string => {
+    if (roles.includes('admin')) return 'Admin';
+    if (roles.includes('shop-owner')) return 'Shop Owner';
+    if (roles.includes('affiliate')) return 'Affiliate';
+    return 'Customer';
   };
 
   if (loading) {
@@ -178,12 +308,49 @@ export const AdminUserManagement: React.FC = () => {
     <div className="max-w-7xl mx-auto p-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">User Management</h1>
-        <p className="text-gray-600">Manage all registered users, their accounts, and coupons</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Management</h1>
+            <p className="text-gray-600">Manage all registered users, accounts, and coupons</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode('users')}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                viewMode === 'users'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:border-blue-600'
+              }`}
+            >
+              Users ({users.length})
+            </button>
+            <button
+              onClick={() => setViewMode('coupons')}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                viewMode === 'coupons'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:border-blue-600'
+              }`}
+            >
+              All Coupons ({coupons.length})
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm font-medium">Total Coupons</p>
+              <p className="text-3xl font-bold text-orange-600 mt-1">{coupons.length}</p>
+            </div>
+            <svg className="h-12 w-12 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+            </svg>
+          </div>
+        </div>
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -199,7 +366,7 @@ export const AdminUserManagement: React.FC = () => {
             <div>
               <p className="text-gray-600 text-sm font-medium">Shop Owners</p>
               <p className="text-3xl font-bold text-blue-600 mt-1">
-                {users.filter(u => u.role === 'shop_owner').length}
+                {users.filter(u => u.roles.includes('shop-owner')).length}
               </p>
             </div>
             <BuildingStorefrontIcon className="h-12 w-12 text-blue-400" />
@@ -211,7 +378,7 @@ export const AdminUserManagement: React.FC = () => {
             <div>
               <p className="text-gray-600 text-sm font-medium">Affiliates</p>
               <p className="text-3xl font-bold text-green-600 mt-1">
-                {users.filter(u => u.role === 'affiliate').length}
+                {users.filter(u => u.roles.includes('affiliate')).length}
               </p>
             </div>
             <CurrencyDollarIcon className="h-12 w-12 text-green-400" />
@@ -223,7 +390,7 @@ export const AdminUserManagement: React.FC = () => {
             <div>
               <p className="text-gray-600 text-sm font-medium">Customers</p>
               <p className="text-3xl font-bold text-purple-600 mt-1">
-                {users.filter(u => u.role === 'customer').length}
+                {users.filter(u => u.roles.includes('user')).length}
               </p>
             </div>
             <UserIcon className="h-12 w-12 text-purple-400" />
@@ -255,9 +422,9 @@ export const AdminUserManagement: React.FC = () => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">All Roles</option>
-              <option value="shop_owner">Shop Owners</option>
+              <option value="shop-owner">Shop Owners</option>
               <option value="affiliate">Affiliates</option>
-              <option value="customer">Customers</option>
+              <option value="user">Customers</option>
               <option value="admin">Admins</option>
             </select>
           </div>
@@ -285,30 +452,41 @@ export const AdminUserManagement: React.FC = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3 flex-1">
                     <div className="mt-1">
-                      {getRoleIcon(user.role)}
+                      {getRoleIcon(user.roles)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <p className="font-semibold text-gray-900 truncate">
-                          {user.displayName || 'No Name'}
+                          {user.name || 'No Name'}
                         </p>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(user.role)}`}>
-                          {user.role.replace('_', ' ')}
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(user.roles)}`}>
+                          {getRoleDisplayName(user.roles)}
                         </span>
+                        {isUserBanned(user) && (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 flex items-center gap-1">
+                            <NoSymbolIcon className="h-3 w-3" />
+                            Banned
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-gray-600 truncate">{user.email}</p>
-                      {user.shopName && (
-                        <p className="text-sm text-gray-500 mt-1">🏪 {user.shopName}</p>
+                      {user.shopDescription && (
+                        <p className="text-sm text-gray-500 mt-1">🏪 {user.shopDescription}</p>
                       )}
                       <div className="flex items-center gap-2 mt-2">
                         <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                          user.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          user.isActive !== false && !isUserBanned(user) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                         }`}>
-                          {user.isActive !== false ? 'Active' : 'Inactive'}
+                          {user.isActive !== false && !isUserBanned(user) ? 'Active' : isUserBanned(user) ? 'Banned' : 'Inactive'}
                         </span>
-                        {user.role === 'shop_owner' && (
+                        {user.roles.includes('shop-owner') && (
                           <span className="text-xs text-gray-500">
                             {getUserCoupons(user.id).length} coupons
+                          </span>
+                        )}
+                        {isUserBanned(user) && getBanExpiration(user) && (
+                          <span className="text-xs text-red-600">
+                            Until: {getBanExpiration(user)}
                           </span>
                         )}
                       </div>
@@ -332,12 +510,20 @@ export const AdminUserManagement: React.FC = () => {
               <div className="p-6 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">{selectedUser.displayName || 'No Name'}</h2>
+                    <h2 className="text-xl font-bold text-gray-900">{selectedUser.name || 'No Name'}</h2>
                     <p className="text-gray-600 mt-1">{selectedUser.email}</p>
                   </div>
-                  <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getRoleBadgeColor(selectedUser.role)}`}>
-                    {selectedUser.role.replace('_', ' ')}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getRoleBadgeColor(selectedUser.roles)}`}>
+                      {getRoleDisplayName(selectedUser.roles)}
+                    </span>
+                    {isUserBanned(selectedUser) && (
+                      <span className="px-3 py-1 text-sm font-semibold rounded-full bg-red-100 text-red-800 flex items-center gap-1">
+                        <NoSymbolIcon className="h-4 w-4" />
+                        Banned
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -349,17 +535,11 @@ export const AdminUserManagement: React.FC = () => {
                     <p className="text-gray-900 font-mono text-sm mt-1">{selectedUser.id}</p>
                   </div>
 
-                  {selectedUser.phoneNumber && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Phone Number</label>
-                      <p className="text-gray-900 mt-1">{selectedUser.phoneNumber}</p>
-                    </div>
-                  )}
 
-                  {selectedUser.shopName && (
+                  {selectedUser.shopDescription && (
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Shop Name</label>
-                      <p className="text-gray-900 mt-1">{selectedUser.shopName}</p>
+                      <label className="text-sm font-medium text-gray-500">Shop Description</label>
+                      <p className="text-gray-900 mt-1">{selectedUser.shopDescription}</p>
                     </div>
                   )}
 
@@ -370,19 +550,29 @@ export const AdminUserManagement: React.FC = () => {
                     </div>
                   )}
 
-                  {selectedUser.totalEarnings !== undefined && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Credits</label>
+                    <p className="text-gray-900 font-semibold mt-1">{selectedUser.credits || 0}</p>
+                  </div>
+
+                  {isUserBanned(selectedUser) && (
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Total Earnings</label>
-                      <p className="text-gray-900 font-semibold mt-1">${selectedUser.totalEarnings.toFixed(2)}</p>
+                      <label className="text-sm font-medium text-gray-500">Ban Status</label>
+                      <p className="mt-1 font-semibold text-red-600">
+                        Banned until: {getBanExpiration(selectedUser) || 'N/A'}
+                      </p>
+                      {selectedUser.banReason && (
+                        <p className="text-sm text-gray-600 mt-1">Reason: {selectedUser.banReason}</p>
+                      )}
                     </div>
                   )}
 
                   <div>
                     <label className="text-sm font-medium text-gray-500">Account Status</label>
                     <p className={`mt-1 font-semibold ${
-                      selectedUser.isActive !== false ? 'text-green-600' : 'text-red-600'
+                      selectedUser.isActive !== false && !isUserBanned(selectedUser) ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {selectedUser.isActive !== false ? 'Active' : 'Inactive'}
+                      {isUserBanned(selectedUser) ? 'Banned' : selectedUser.isActive !== false ? 'Active' : 'Inactive'}
                     </p>
                   </div>
 
@@ -395,7 +585,7 @@ export const AdminUserManagement: React.FC = () => {
                 </div>
 
                 {/* User's Coupons */}
-                {selectedUser.role === 'shop_owner' && (
+                {selectedUser.roles.includes('shop-owner') && (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">
                       User's Coupons ({getUserCoupons(selectedUser.id).length})
@@ -427,9 +617,31 @@ export const AdminUserManagement: React.FC = () => {
 
                 {/* Actions */}
                 <div className="space-y-3">
+                  {isUserBanned(selectedUser) ? (
+                    <button
+                      onClick={() => handleUnbanUser(selectedUser.id)}
+                      disabled={actionLoading}
+                      className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <ClockIcon className="h-5 w-5" />
+                      {actionLoading ? 'Processing...' : 'Unban User'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setShowBanModal(true);
+                      }}
+                      className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <NoSymbolIcon className="h-5 w-5" />
+                      Ban User
+                    </button>
+                  )}
+
                   <button
                     onClick={() => handleToggleUserStatus(selectedUser.id, selectedUser.isActive !== false)}
-                    className={`w-full px-4 py-2 rounded-lg font-semibold transition-colors ${
+                    disabled={actionLoading}
+                    className={`w-full px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 ${
                       selectedUser.isActive !== false
                         ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                         : 'bg-green-100 text-green-800 hover:bg-green-200'
@@ -440,10 +652,11 @@ export const AdminUserManagement: React.FC = () => {
 
                   <button
                     onClick={() => {
-                      setDeleteTarget({ type: 'user', id: selectedUser.id, name: selectedUser.displayName || selectedUser.email });
+                      setDeleteTarget({ type: 'user', id: selectedUser.id, name: selectedUser.name || selectedUser.email });
                       setShowDeleteConfirm(true);
                     }}
-                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                    disabled={actionLoading}
+                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <TrashIcon className="h-5 w-5" />
                     Delete User & All Data
@@ -459,6 +672,86 @@ export const AdminUserManagement: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Ban User Modal */}
+      {showBanModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Ban User</h3>
+              <button
+                onClick={() => {
+                  setShowBanModal(false);
+                  setBanPeriod('7');
+                  setBanReason('');
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ban Period (Days) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={banPeriod}
+                  onChange={(e) => setBanPeriod(e.target.value)}
+                  placeholder="Enter number of days"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ban Reason (Optional)
+                </label>
+                <textarea
+                  value={banReason}
+                  onChange={(e) => setBanReason(e.target.value)}
+                  placeholder="Enter reason for ban..."
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+              </div>
+              
+              <div className="bg-orange-50 border border-orange-200 rounded-md p-3">
+                <p className="text-sm text-orange-800">
+                  <strong>User:</strong> {selectedUser.name} ({selectedUser.email})
+                </p>
+                <p className="text-xs text-orange-700 mt-1">
+                  This will ban the user for {banPeriod} day(s). They will not be able to access their account until the ban expires.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowBanModal(false);
+                  setBanPeriod('7');
+                  setBanReason('');
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleBanUser(selectedUser.id)}
+                disabled={actionLoading || !banPeriod || parseInt(banPeriod) <= 0}
+                className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700 disabled:opacity-50 font-medium transition-colors"
+              >
+                {actionLoading ? 'Processing...' : 'Ban User'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && deleteTarget && (
@@ -499,9 +792,10 @@ export const AdminUserManagement: React.FC = () => {
                     handleDeleteCoupon(deleteTarget.id);
                   }
                 }}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                disabled={actionLoading}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                Delete
+                {actionLoading ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

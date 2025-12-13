@@ -20,7 +20,7 @@ import {
     KeyIcon
 } from '@heroicons/react/24/outline';
 import { db } from '../firebase';
-import { doc, updateDoc, deleteDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 
 type SuperAdminTab = 'overview' | 'users' | 'credits' | 'system' | 'logs' | 'intelligence';
 
@@ -45,6 +45,9 @@ const SuperAdminDashboard: React.FC = () => {
     const [selectedUser, setSelectedUser] = useState<Shop | null>(null);
     const [editMode, setEditMode] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
+    const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+    const [newAdminEmail, setNewAdminEmail] = useState('');
+    const [newAdminName, setNewAdminName] = useState('');
     
     // Intelligence data state
     const [allCustomerData, setAllCustomerData] = useState<any[]>([]);
@@ -170,7 +173,7 @@ const SuperAdminDashboard: React.FC = () => {
     useEffect(() => {
         let cleanupRealTimeListeners: (() => void) | null = null;
         
-        if (activeTab === 'intelligence') {
+        if (activeTab === 'intelligence' || activeTab === 'system') {
             logger.debug('Setting up real-time intelligence listeners');
             
             cleanupRealTimeListeners = api.setupRealTimeIntelligenceListeners((update) => {
@@ -185,7 +188,14 @@ const SuperAdminDashboard: React.FC = () => {
                         setRedemptions(update.data);
                         break;
                     case 'coupons':
-                        setAllCoupons(update.data);
+                        // Convert Firestore timestamps to ISO strings for consistency
+                        const formattedCoupons = update.data.map((c: any) => ({
+                            ...c,
+                            createdAt: c.createdAt?.toDate ? c.createdAt.toDate().toISOString() : c.createdAt || new Date().toISOString(),
+                            expiryDate: c.expiryDate?.toDate ? c.expiryDate.toDate().toISOString() : c.expiryDate
+                        }));
+                        setAllCoupons(formattedCoupons);
+                        logger.debug(`✅ Real-time: Updated coupons list (${formattedCoupons.length} total)`);
                         break;
                     case 'customers':
                         setAllCustomerData(prev => {
@@ -203,11 +213,13 @@ const SuperAdminDashboard: React.FC = () => {
                         break;
                 }
                 
-                // Trigger intelligence data refresh after state updates
+                // Trigger intelligence data refresh after state updates (only for intelligence tab)
+                if (activeTab === 'intelligence') {
                 setTimeout(() => {
                     logger.debug('Refreshing intelligence data due to real-time update');
                     fetchIntelligenceData();
                 }, 500);
+                }
             });
         }
         
@@ -401,11 +413,23 @@ const SuperAdminDashboard: React.FC = () => {
     const handleUpdateUserRoles = async (userId: string, newRoles: Role[]) => {
         setActionLoading(true);
         try {
+            logger.info('Updating user roles', { userId, newRoles });
             const userRef = doc(db, 'shops', userId);
             await updateDoc(userRef, { roles: newRoles });
+            
+            // Track the action
+            trackSuperAdminAction('update_user_roles', { 
+                userId, 
+                newRoles,
+                userName: allUsers.find(u => u.id === userId)?.name 
+            });
+            
+            logger.info('User roles updated successfully');
+            alert('✅ Admin role granted successfully!');
             await fetchAllData();
         } catch (error) {
             logger.error('Failed to update roles', error);
+            alert(`❌ Failed to update roles: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setActionLoading(false);
         }
@@ -606,7 +630,10 @@ const SuperAdminDashboard: React.FC = () => {
                         <div className="space-y-6">
                             <div className="flex justify-between items-center">
                                 <h3 className="text-xl font-semibold">User Management</h3>
-                                <button className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                                <button 
+                                    onClick={() => setShowCreateAdminModal(true)}
+                                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                                >
                                     <PlusIcon className="h-5 w-5 inline mr-2" />
                                     Create Admin User
                                 </button>
@@ -647,18 +674,34 @@ const SuperAdminDashboard: React.FC = () => {
                                                     {user.credits.toLocaleString()}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                                    {!user.roles.includes('admin') && (
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (window.confirm(`Grant admin access to ${user.name} (${user.email})?`)) {
+                                                                    await handleUpdateUserRoles(user.id, [...user.roles, 'admin']);
+                                                                }
+                                                            }}
+                                                            className="text-green-600 hover:text-green-900"
+                                                            title="Grant Admin Access"
+                                                            disabled={actionLoading}
+                                                        >
+                                                            <ShieldCheckIcon className="h-4 w-4 inline" />
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={() => {
                                                             setSelectedUser(user);
                                                             setEditMode(true);
                                                         }}
                                                         className="text-blue-600 hover:text-blue-900"
+                                                        title="Edit User"
                                                     >
                                                         <PencilIcon className="h-4 w-4 inline" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteUser(user.id)}
                                                         className="text-red-600 hover:text-red-900"
+                                                        title="Delete User"
                                                         disabled={actionLoading}
                                                     >
                                                         <TrashIcon className="h-4 w-4 inline" />
@@ -814,28 +857,84 @@ const SuperAdminDashboard: React.FC = () => {
                             <h3 className="text-xl font-semibold">System Control</h3>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                                    <h4 className="font-semibold mb-4">Coupon Management</h4>
+                                <div className="bg-white border border-gray-200 rounded-lg p-6 md:col-span-2">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h4 className="font-semibold">Coupon Management</h4>
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-sm text-gray-600">Total: {allCoupons.length} coupons</span>
+                                            <button
+                                                onClick={fetchAllData}
+                                                disabled={loading}
+                                                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                                            >
+                                                {loading ? 'Refreshing...' : '🔄 Refresh'}
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div className="space-y-4">
+                                        {allCoupons.length === 0 ? (
+                                            <div className="text-center py-8 text-gray-500">
+                                                <p>No coupons found. Coupons will appear here once created.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="max-h-96 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-4">
+                                                {allCoupons.map(coupon => {
+                                                    const isExpired = coupon.validityType === 'expiryDate' && coupon.expiryDate 
+                                                        ? new Date(coupon.expiryDate) < new Date()
+                                                        : false;
+                                                    const isExhausted = coupon.usesLeft <= 0;
+                                                    
+                                                    return (
+                                                        <div 
+                                                            key={coupon.id} 
+                                                            className={`flex justify-between items-center p-3 rounded-lg border ${
+                                                                isExpired || isExhausted 
+                                                                    ? 'bg-red-50 border-red-200' 
+                                                                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                                                            }`}
+                                                        >
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <div className="text-sm font-medium text-gray-900">{coupon.title}</div>
+                                                                    {isExpired && (
+                                                                        <span className="px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded">Expired</span>
+                                                                    )}
+                                                                    {isExhausted && !isExpired && (
+                                                                        <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-800 rounded">Exhausted</span>
+                                                                    )}
+                                                                    {!isExpired && !isExhausted && (
+                                                                        <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded">Active</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500 space-y-1">
+                                                                    <div>Shop: {coupon.shopOwnerName || 'Unknown'}</div>
+                                                                    <div>Uses: {coupon.usesLeft}/{coupon.maxUses} remaining</div>
                                         <div>
-                                            <h5 className="text-sm font-medium text-gray-700 mb-2">Active Coupons ({allCoupons.length})</h5>
-                                            <div className="max-h-40 overflow-y-auto space-y-2">
-                                                {allCoupons.slice(0, 10).map(coupon => (
-                                                    <div key={coupon.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                                                                        Discount: {coupon.discountType === 'percentage' 
+                                                                            ? `${coupon.discountValue}%` 
+                                                                            : `$${coupon.discountValue}`}
+                                                                    </div>
                                                         <div>
-                                                            <div className="text-sm font-medium">{coupon.title}</div>
-                                                            <div className="text-xs text-gray-500">Uses: {coupon.usesLeft}/{coupon.maxUses}</div>
+                                                                        Created: {new Date(coupon.createdAt).toLocaleDateString()}
+                                                                    </div>
+                                                                    {coupon.clicks > 0 && (
+                                                                        <div>Views: {coupon.clicks}</div>
+                                                                    )}
+                                                                </div>
                                                         </div>
                                                         <button
                                                             onClick={() => handleDeleteCoupon(coupon.id)}
-                                                            className="text-red-500 hover:text-red-700"
+                                                                disabled={actionLoading}
+                                                                className="ml-4 text-red-500 hover:text-red-700 disabled:opacity-50 transition-colors"
+                                                                title="Delete coupon"
                                                         >
-                                                            <TrashIcon className="h-4 w-4" />
+                                                                <TrashIcon className="h-5 w-5" />
                                                         </button>
                                                     </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1211,13 +1310,192 @@ const SuperAdminDashboard: React.FC = () => {
                 </div>
             </div>
 
+            {/* Create Admin User Modal */}
+            {showCreateAdminModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-gray-900">Create Admin User</h3>
+                            <button
+                                onClick={() => {
+                                    setShowCreateAdminModal(false);
+                                    setNewAdminEmail('');
+                                    setNewAdminName('');
+                                }}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <XMarkIcon className="h-6 w-6" />
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Full Name <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newAdminName}
+                                    onChange={(e) => setNewAdminName(e.target.value)}
+                                    placeholder="Enter admin's full name"
+                                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    required
+                                />
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Email Address <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="email"
+                                    value={newAdminEmail}
+                                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                                    placeholder="admin@example.com"
+                                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    If the user doesn't have an account yet, they'll need to sign up with this email. The admin role will be automatically granted.
+                                </p>
+                            </div>
+                            
+                            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                                <p className="text-sm text-blue-800">
+                                    <strong>Note:</strong> This will grant full admin access, allowing the user to:
+                                </p>
+                                <ul className="text-xs text-blue-700 mt-2 list-disc list-inside space-y-1">
+                                    <li>Access the admin dashboard</li>
+                                    <li>Manage all users and coupons</li>
+                                    <li>View system analytics</li>
+                                    <li>Manage credit requests</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={() => {
+                                    setShowCreateAdminModal(false);
+                                    setNewAdminEmail('');
+                                    setNewAdminName('');
+                                }}
+                                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 font-medium transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (!newAdminEmail || !newAdminName) {
+                                        alert('Please fill in all required fields');
+                                        return;
+                                    }
+                                    
+                                    // Validate email format
+                                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                    if (!emailRegex.test(newAdminEmail)) {
+                                        alert('Please enter a valid email address');
+                                        return;
+                                    }
+                                    
+                                    setActionLoading(true);
+                                    try {
+                                        const emailLower = newAdminEmail.toLowerCase().trim();
+                                        
+                                        // Check if user exists in Firestore (shops collection)
+                                        const shopsRef = collection(db, 'shops');
+                                        const q = query(shopsRef, where('email', '==', emailLower));
+                                        const querySnapshot = await getDocs(q);
+                                        
+                                        if (!querySnapshot.empty) {
+                                            // User exists - update their roles to include admin
+                                            const userDoc = querySnapshot.docs[0];
+                                            const userData = userDoc.data();
+                                            const existingRoles: Role[] = userData.roles || [];
+                                            
+                                            if (existingRoles.includes('admin')) {
+                                                alert(`✅ ${newAdminName} already has admin access!`);
+                                                setShowCreateAdminModal(false);
+                                                setNewAdminEmail('');
+                                                setNewAdminName('');
+                                                setActionLoading(false);
+                                                await fetchAllData();
+                                                return;
+                                            }
+                                            
+                                            // Add admin role
+                                            const updatedRoles = [...existingRoles, 'admin'];
+                                            await updateDoc(doc(db, 'shops', userDoc.id), {
+                                                roles: updatedRoles
+                                            });
+                                            
+                                            // Log the action
+                                            trackSuperAdminAction('create_admin_user', { 
+                                                userId: userDoc.id, 
+                                                email: emailLower,
+                                                name: newAdminName
+                                            });
+                                            
+                                            logger.info('Admin role granted to existing user', { 
+                                                userId: userDoc.id, 
+                                                email: emailLower,
+                                                name: newAdminName
+                                            });
+                                            
+                                            alert(`✅ Admin access granted to ${newAdminName}!\n\nThey can now:\n- Access the admin dashboard\n- Manage all users and coupons\n- View system analytics\n- Manage credit requests`);
+                                            
+                                            // Refresh data
+                                            await fetchAllData();
+                                            
+                                            // Close modal
+                                            setShowCreateAdminModal(false);
+                                            setNewAdminEmail('');
+                                            setNewAdminName('');
+                                        } else {
+                                            // User doesn't exist in Firestore
+                                            // We can't create a Firebase Auth user from client side without a password
+                                            // So we'll inform the admin and provide instructions
+                                            const message = `⚠️ User Not Found\n\n${newAdminName} (${emailLower}) is not registered in the system yet.\n\nTo grant admin access:\n\n1. Ask them to sign up at the login page\n2. Once they're registered, come back here\n3. Click "Grant Admin Access" (🛡️) next to their name in the user list\n\nOR\n\nYou can search for them in the user list and grant admin access directly.`;
+                                            
+                                            if (window.confirm(message + '\n\nWould you like to keep the modal open to try another email?')) {
+                                                // Keep modal open
+                                                setActionLoading(false);
+                                            } else {
+                                                // Close modal
+                                                setShowCreateAdminModal(false);
+                                                setNewAdminEmail('');
+                                                setNewAdminName('');
+                                                setActionLoading(false);
+                                            }
+                                        }
+                                        
+                                    } catch (error: any) {
+                                        logger.error('Failed to create admin user', error);
+                                        alert(`❌ Error: ${error.message || 'Failed to grant admin access. Please try again.'}`);
+                                        setActionLoading(false);
+                                    }
+                                }}
+                                disabled={actionLoading || !newAdminEmail || !newAdminName}
+                                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+                            >
+                                {actionLoading ? 'Processing...' : 'Grant Admin Access'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* User Edit Modal */}
             {editMode && selectedUser && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <h3 className="text-lg font-semibold mb-4">Edit User: {selectedUser.name}</h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold">Edit User: {selectedUser.name}</h3>
+                            <span className="text-sm text-gray-500">{selectedUser.email}</span>
+                        </div>
                         
                         <div className="space-y-4">
+                            {/* Credits Section */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Credits</label>
                                 <input
@@ -1227,21 +1505,68 @@ const SuperAdminDashboard: React.FC = () => {
                                     onChange={(e) => setSelectedUser({...selectedUser, credits: parseInt(e.target.value)})}
                                 />
                             </div>
+
+                            {/* Roles Section */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">User Roles</label>
+                                <div className="space-y-2">
+                                    {(['admin', 'shop-owner', 'affiliate', 'user'] as Role[]).map((role) => {
+                                        const hasRole = selectedUser.roles.includes(role);
+                                        return (
+                                            <label key={role} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={hasRole}
+                                                    onChange={(e) => {
+                                                        const newRoles = e.target.checked
+                                                            ? [...selectedUser.roles, role]
+                                                            : selectedUser.roles.filter(r => r !== role);
+                                                        setSelectedUser({...selectedUser, roles: newRoles});
+                                                    }}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                />
+                                                <div className="flex-1">
+                                                    <span className="text-sm font-medium text-gray-900 capitalize">
+                                                        {role.replace('-', ' ')}
+                                                    </span>
+                                                    {role === 'admin' && (
+                                                        <span className="ml-2 text-xs text-red-600 font-semibold">
+                                                            ⚠️ Full System Access
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                                {selectedUser.roles.includes('admin') && (
+                                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                        <p className="text-xs text-yellow-800">
+                                            <strong>⚠️ Warning:</strong> Admin role grants full access to the admin dashboard and all administrative functions.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                             
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 pt-4">
                                 <button
-                                    onClick={() => handleUpdateUserCredits(selectedUser.id, selectedUser.credits)}
+                                    onClick={async () => {
+                                        await handleUpdateUserCredits(selectedUser.id, selectedUser.credits);
+                                        await handleUpdateUserRoles(selectedUser.id, selectedUser.roles);
+                                        setEditMode(false);
+                                        setSelectedUser(null);
+                                    }}
                                     disabled={actionLoading}
-                                    className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 disabled:opacity-50"
+                                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium"
                                 >
-                                    {actionLoading ? 'Updating...' : 'Update'}
+                                    {actionLoading ? 'Saving...' : 'Save Changes'}
                                 </button>
                                 <button
                                     onClick={() => {
                                         setEditMode(false);
                                         setSelectedUser(null);
                                     }}
-                                    className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
+                                    className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 font-medium"
                                 >
                                     Cancel
                                 </button>

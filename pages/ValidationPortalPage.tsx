@@ -1,14 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
-import { logger } from '../utils/logger';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { logger } from '../utils/logger';
 import { api } from '../services/api';
-import { logger } from '../utils/logger';
 import { Coupon } from '../types';
-import { logger } from '../utils/logger';
 import { useAuth } from '../hooks/useAuth';
-import { logger } from '../utils/logger';
 import { useTranslation } from '../hooks/useTranslation';
 import { logger } from '../utils/logger';
 

@@ -3,7 +3,7 @@ import React, { lazy, Suspense, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { Role } from './types';
-import { SUPER_ADMIN_EMAIL } from './config/constants';
+import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin } from './config/constants';
 import { analytics } from './config/monitoring';
 
 import Header from './components/Header';
@@ -47,7 +47,7 @@ const AnalyticsTracker: React.FC = () => {
 const App: React.FC = () => {
   const { user, isSuperAdmin } = useAuth();
 
-  const isAdminUser = user?.roles.includes('admin') && user.email === SUPER_ADMIN_EMAIL;
+  const isAdminUser = user?.roles.includes('admin') && user.email && checkIsSuperAdmin(user.email);
 
   const DashboardRedirect: React.FC = () => {
     if (!user) return <Navigate to="/login" />;

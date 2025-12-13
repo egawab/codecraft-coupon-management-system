@@ -5,6 +5,8 @@
  * ever reach Firebase, regardless of the data source or user type.
  */
 
+import { logger } from './logger';
+
 /**
  * Validates any object before sending to Firebase
  * Throws an error if undefined values are found

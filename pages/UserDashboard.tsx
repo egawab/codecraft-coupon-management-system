@@ -1,22 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
-import { logger } from '../utils/logger';
 import { api } from '../services/api';
-import { logger } from '../utils/logger';
 import { Coupon, Redemption } from '../types';
-import { logger } from '../utils/logger';
 import { useAuth } from '../hooks/useAuth';
-import { logger } from '../utils/logger';
 import { useRealTimeTracking } from '../hooks/useRealTimeTracking';
-import { logger } from '../utils/logger';
 import CouponCard from '../components/CouponCard';
-import { logger } from '../utils/logger';
 import StatCard from '../components/StatCard';
-import { logger } from '../utils/logger';
 import { Link } from 'react-router-dom';
-import { logger } from '../utils/logger';
 import { useTranslation } from '../hooks/useTranslation';
-import { logger } from '../utils/logger';
 import { 
     GiftIcon, 
     ShoppingBagIcon, 
@@ -25,6 +15,7 @@ import {
     SparklesIcon,
     ClockIcon 
 } from '@heroicons/react/24/outline';
+import { logger } from '../utils/logger';
 
 const UserDashboard: React.FC = () => {
     const { user } = useAuth();

@@ -1,17 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { logger } from '../utils/logger';
 import { api } from '../services/api';
-import { logger } from '../utils/logger';
 import { Shop, AdminCreditLog, Coupon, Redemption, Referral, Role } from '../types';
-import { logger } from '../utils/logger';
 import { useAuth } from '../hooks/useAuth';
-import { logger } from '../utils/logger';
 import { useRealTimeTracking } from '../hooks/useRealTimeTracking';
-import { logger } from '../utils/logger';
 import StatCard from '../components/StatCard';
-import { logger } from '../utils/logger';
 import RealTimeActivityFeed from '../components/RealTimeActivityFeed';
-import { logger } from '../utils/logger';
 import {
     UserGroupIcon,
     BanknotesIcon,
@@ -25,18 +18,13 @@ import {
     UserCircleIcon
 } from '@heroicons/react/24/outline';
 import { useTranslation } from '../hooks/useTranslation';
-import { logger } from '../utils/logger';
 import Breadcrumb from '../components/Breadcrumb';
-import { logger } from '../utils/logger';
 import SimpleChart from '../components/SimpleChart';
-import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
-import { logger } from '../utils/logger';
 import EnhancedSearch from '../components/EnhancedSearch';
-import { logger } from '../utils/logger';
 import Tooltip, { HelpTooltip } from '../components/Tooltip';
-import { logger } from '../utils/logger';
 import { AdminUserManagement } from '../components/AdminUserManagement';
+import { logger } from '../utils/logger';
 
 type AdminTab = 'overview' | 'users' | 'shops' | 'affiliates' | 'coupons' | 'redemptions' | 'referrals' | 'intelligence' | 'settings';
 
@@ -502,8 +490,82 @@ const AdminDashboard: React.FC = () => {
                     )}
                     {activeTab === 'coupons' && (
                         <div className="bg-white rounded-xl shadow-lg border overflow-hidden p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
                             <h2 className="text-2xl font-bold text-gray-800">Coupons Management</h2>
-                            <p className="text-gray-600">Total Coupons: {allCoupons.length}</p>
+                                    <p className="text-gray-600 mt-1">Total Coupons: {allCoupons.length}</p>
+                                </div>
+                                <button
+                                    onClick={fetchData}
+                                    disabled={busy}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                >
+                                    {busy ? 'Refreshing...' : '🔄 Refresh'}
+                                </button>
+                            </div>
+                            
+                            {allCoupons.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <p>No coupons found. Coupons will appear here once created.</p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50 sticky top-0">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coupon</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shop Owner</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discount</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uses</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {allCoupons.map(coupon => {
+                                                    const isExpired = coupon.validityType === 'expiryDate' && coupon.expiryDate 
+                                                        ? new Date(coupon.expiryDate) < new Date()
+                                                        : false;
+                                                    const isExhausted = coupon.usesLeft <= 0;
+                                                    
+                                                    return (
+                                                        <tr key={coupon.id} className="hover:bg-gray-50">
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <div className="text-sm font-medium text-gray-900">{coupon.title}</div>
+                                                                <div className="text-xs text-gray-500">{coupon.description?.substring(0, 50)}...</div>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                {coupon.shopOwnerName || 'Unknown'}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                {coupon.discountType === 'percentage' 
+                                                                    ? `${coupon.discountValue}%` 
+                                                                    : `$${coupon.discountValue}`}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                {coupon.usesLeft}/{coupon.maxUses}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                {isExpired ? (
+                                                                    <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">Expired</span>
+                                                                ) : isExhausted ? (
+                                                                    <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">Exhausted</span>
+                                                                ) : (
+                                                                    <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">Active</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                {new Date(coupon.createdAt).toLocaleDateString()}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                     {activeTab === 'redemptions' && (

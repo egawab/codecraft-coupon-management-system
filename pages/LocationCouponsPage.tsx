@@ -1,18 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { logger } from '../utils/logger';
 import { useParams, Link } from 'react-router-dom';
-import { logger } from '../utils/logger';
 import { api } from '../services/api';
-import { logger } from '../utils/logger';
 import { Coupon } from '../types';
-import { logger } from '../utils/logger';
 import CouponCard from '../components/CouponCard';
-import { logger } from '../utils/logger';
 import { 
   MapPinIcon, 
   ArrowLeftIcon,
   MagnifyingGlassIcon 
 } from '@heroicons/react/24/outline';
+import { logger } from '../utils/logger';
 
 const LocationCouponsPage: React.FC = () => {
   const { country, city, area } = useParams<{ country?: string; city?: string; area?: string }>();

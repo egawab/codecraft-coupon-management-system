@@ -20,6 +20,10 @@ export interface Shop {
   addressLine2: string;
   state: string;
   postalCode: string;
+  // Ban management fields
+  bannedUntil?: string; // ISO string - timestamp when ban expires, null/undefined = not banned
+  banReason?: string; // Reason for the ban
+  isActive?: boolean; // Account active status (legacy support)
 }
 
 export interface Coupon {

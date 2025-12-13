@@ -1,9 +1,6 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { logger } from '../utils/logger';
 import { Shop, Role } from '../types';
-import { logger } from '../utils/logger';
 import { auth, db } from '../firebase';
-import { logger } from '../utils/logger';
 import { 
   signInWithEmailAndPassword, 
   signOut, 
@@ -11,10 +8,8 @@ import {
   createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
-import { logger } from '../utils/logger';
 import { FirebaseError } from 'firebase/app';
-import { logger } from '../utils/logger';
-import { SUPER_ADMIN_EMAIL, CREDIT_CONFIG } from '../config/constants';
+import { SUPER_ADMIN_EMAIL, CREDIT_CONFIG, isSuperAdmin } from '../config/constants';
 import { logger } from '../utils/logger';
 
 interface ShopDetails {
@@ -41,7 +36,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   
   // Check if current user is super admin
-  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+  const isSuperAdminUser = user?.email ? isSuperAdmin(user.email) : false;
 
   const fetchUserData = async (firebaseUser: any): Promise<Shop | null> => {
     const userDocRef = doc(db, 'shops', firebaseUser.uid);
@@ -49,6 +44,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     if (userDocSnap.exists()) {
        const userData = userDocSnap.data();
+       
+       // Check if user is banned
+       if (userData.bannedUntil) {
+         const bannedUntil = userData.bannedUntil.toDate ? userData.bannedUntil.toDate() : new Date(userData.bannedUntil);
+         if (bannedUntil > new Date()) {
+           logger.warn('User is banned', { userId: firebaseUser.uid, bannedUntil: bannedUntil.toISOString() });
+           signOut(auth);
+           alert(`Your account has been banned until ${bannedUntil.toLocaleString()}. ${userData.banReason ? `Reason: ${userData.banReason}` : ''}`);
+           return null;
+         }
+       }
+       
        return {
          id: firebaseUser.uid,
          name: userData.name,
@@ -178,7 +185,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, loading, refreshUser, isSuperAdmin }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, loading, refreshUser, isSuperAdmin: isSuperAdminUser }}>
       {!loading && children}
     </AuthContext.Provider>
   );

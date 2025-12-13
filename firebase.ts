@@ -1,11 +1,8 @@
 
 // Import the functions you need from the SDKs you need
 import { initializeApp } from 'firebase/app';
-import { logger } from './utils/logger';
 import { getAuth } from 'firebase/auth';
-import { logger } from './utils/logger';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
-import { logger } from './utils/logger';
 import { getFunctions } from 'firebase/functions';
 import { logger } from './utils/logger';
 

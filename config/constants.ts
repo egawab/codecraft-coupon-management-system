@@ -46,12 +46,28 @@ export const ANALYTICS_ENABLED = IS_PROD;
 
 /**
  * Super Admin Configuration
- * SECURITY: This email should be set via environment variable
+ * SECURITY: These emails should be set via environment variable
+ * Supports multiple emails separated by comma
  */
-export const SUPER_ADMIN_EMAIL = validateEnvVar(
+const ADMIN_EMAIL_STRING = validateEnvVar(
   'VITE_ADMIN_EMAIL',
   IS_DEV ? 'admin@kobonz.site' : undefined
 );
+
+export const SUPER_ADMIN_EMAIL = ADMIN_EMAIL_STRING; // Keep for backward compatibility
+export const SUPER_ADMIN_EMAILS = ADMIN_EMAIL_STRING
+  .split(',')
+  .map(email => email.trim())
+  .filter(email => email.length > 0);
+
+/**
+ * Check if an email is a super admin
+ */
+export const isSuperAdmin = (email: string): boolean => {
+  return SUPER_ADMIN_EMAILS.some(adminEmail => 
+    adminEmail.toLowerCase() === email.toLowerCase()
+  );
+};
 
 /**
  * GeoNames API Configuration
@@ -180,7 +196,7 @@ export const CONFIG = {
 if (IS_DEV) {
   logger.debug('Application Configuration', {
     mode: MODE,
-    superAdmin: SUPER_ADMIN_EMAIL,
+    superAdmins: SUPER_ADMIN_EMAILS,
     geonames: GEONAMES_USERNAME ? 'Configured' : 'Not configured',
     features: FEATURES,
   });

@@ -1,5 +1,4 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { logger } from '../utils/logger';
 import { translations, type Language, type Translations } from '../locales/index';
 import { logger } from '../utils/logger';
 
@@ -52,9 +51,13 @@ export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!currentTranslations) return key;
 
     const keys = key.split('.');
-    let result: any = currentTranslations;
+    let result: unknown = currentTranslations;
     for (const k of keys) {
-      result = result?.[k];
+      if (result && typeof result === 'object' && k in result) {
+        result = (result as Record<string, unknown>)[k];
+      } else {
+        return key; // Return the key itself if not found
+      }
       if (result === undefined) {
         return key; // Return the key itself if not found
       }
@@ -66,7 +69,7 @@ export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }, result);
     }
 
-    return result || key;
+    return (typeof result === 'string' ? result : String(result)) || key;
   }, [currentTranslations]);
   
   if (loading) {
