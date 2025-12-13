@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { logger } from '../utils/logger';
 import { useParams, Link } from 'react-router-dom';
+import { logger } from '../utils/logger';
 import { api } from '../services/api';
+import { logger } from '../utils/logger';
 import { Coupon } from '../types';
+import { logger } from '../utils/logger';
 import CouponCard from '../components/CouponCard';
+import { logger } from '../utils/logger';
 import { 
   MapPinIcon, 
   ArrowLeftIcon,
@@ -46,7 +51,7 @@ const LocationCouponsPage: React.FC = () => {
         
         setCoupons(filtered);
       } catch (error) {
-        console.error('Error fetching coupons:', error);
+        logger.error('Error fetching coupons:', error);
       } finally {
         setLoading(false);
       }

@@ -1,6 +1,9 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import { logger } from '../utils/logger';
 import { Shop, Role } from '../types';
+import { logger } from '../utils/logger';
 import { auth, db } from '../firebase';
+import { logger } from '../utils/logger';
 import { 
   signInWithEmailAndPassword, 
   signOut, 
@@ -8,7 +11,11 @@ import {
   createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
+import { logger } from '../utils/logger';
 import { FirebaseError } from 'firebase/app';
+import { logger } from '../utils/logger';
+import { SUPER_ADMIN_EMAIL, CREDIT_CONFIG } from '../config/constants';
+import { logger } from '../utils/logger';
 
 interface ShopDetails {
     category: string;
@@ -32,9 +39,6 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Super Admin email from environment
-  const SUPER_ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'osamakhalil740@gmail.com';
   
   // Check if current user is super admin
   const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
@@ -75,7 +79,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
          if (appUser) {
            setUser(appUser);
          } else {
-            console.error("User details not found in Firestore!");
+            logger.error("User details not found in Firestore!");
             setUser(null);
             signOut(auth);
          }
@@ -104,7 +108,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const firebaseUser = userCredential.user;
         
-        const initialCredits = referredBy ? 5000 : 1000;
+        const initialCredits = referredBy 
+          ? CREDIT_CONFIG.REFERRED_SIGNUP_BONUS 
+          : CREDIT_CONFIG.STANDARD_SIGNUP_BONUS;
         const referralCode = firebaseUser.uid.substring(0, 8);
 
         const userDocRef = doc(db, 'shops', firebaseUser.uid);

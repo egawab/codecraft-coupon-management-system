@@ -11,43 +11,44 @@
  */
 
 import { seedAll, estimateSeedingTime } from '../utils/seedLocationCache';
+import { logger } from '../utils/logger';
 
 async function main() {
-  console.log('╔════════════════════════════════════════════╗');
-  console.log('║   🌍 Location Cache Seeding Utility       ║');
-  console.log('╚════════════════════════════════════════════╝');
-  console.log('');
-  console.log('This will pre-populate your Firebase cache with:');
-  console.log('  ✓ All 195+ countries');
-  console.log('  ✓ All cities for 25 priority countries');
-  console.log('  ✓ All districts for 50 major cities');
-  console.log('');
-  console.log(`⏰ Estimated time: ${estimateSeedingTime()}`);
-  console.log('');
-  console.log('Press Ctrl+C to cancel...');
-  console.log('');
+  logger.debug('╔════════════════════════════════════════════╗');
+  logger.debug('║   🌍 Location Cache Seeding Utility       ║');
+  logger.debug('╚════════════════════════════════════════════╝');
+  logger.debug('');
+  logger.debug('This will pre-populate your Firebase cache with:');
+  logger.debug('  ✓ All 195+ countries');
+  logger.debug('  ✓ All cities for 25 priority countries');
+  logger.debug('  ✓ All districts for 50 major cities');
+  logger.debug('');
+  logger.debug(`⏰ Estimated time: ${estimateSeedingTime()}`);
+  logger.debug('');
+  logger.debug('Press Ctrl+C to cancel...');
+  logger.debug('');
   
   // Wait 5 seconds to allow user to cancel
   await new Promise(resolve => setTimeout(resolve, 5000));
   
-  console.log('🚀 Starting seeding process...\n');
+  logger.debug('🚀 Starting seeding process...\n');
   
   try {
     await seedAll((progress) => {
       const percentage = Math.round((progress.completed / progress.total) * 100);
-      console.log(`[${percentage}%] ${progress.current}`);
+      logger.debug(`[${percentage}%] ${progress.current}`);
       
       if (progress.errors.length > 0) {
-        console.log(`   ⚠️ ${progress.errors.length} errors so far`);
+        logger.debug(`   ⚠️ ${progress.errors.length} errors so far`);
       }
     });
     
-    console.log('\n✅ Seeding completed successfully!');
-    console.log('🎉 Your location cache is now ready for production use.');
+    logger.debug('\n✅ Seeding completed successfully!');
+    logger.debug('🎉 Your location cache is now ready for production use.');
     process.exit(0);
   } catch (error) {
-    console.error('\n❌ Seeding failed:', error);
-    console.error('Please check your GeoNames API setup and try again.');
+    logger.error('\n❌ Seeding failed:', error);
+    logger.error('Please check your GeoNames API setup and try again.');
     process.exit(1);
   }
 }

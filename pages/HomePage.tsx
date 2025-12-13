@@ -69,25 +69,23 @@ const HomePage: React.FC = () => {
 
     return (
         <div className="space-y-16 animate-fadeIn">
-            <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#051937] via-[#0f62ff] to-[#7de2fc] text-white px-6 py-14 md:px-12">
-                <div className="blur-blob -right-10 top-10" />
-                <div className="blur-blob -left-12 bottom-0" />
-                <div className="relative z-10 max-w-3xl">
-                    <span className="hero-pill mb-6 inline-flex">{t('home.hero.badge')}</span>
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-balance">
+            <section className="homepage-hero relative overflow-hidden rounded-3xl text-white px-6 py-14 md:px-12">
+                <div className="homepage-hero-content relative z-10 max-w-3xl">
+                    <span className="homepage-hero-badge mb-6">{t('home.hero.badge')}</span>
+                    <h1 className="homepage-hero-title">
                         {t('home.hero.title')}
                     </h1>
-                    <p className="text-lg md:text-xl text-slate-100/90 mt-6 max-w-2xl leading-relaxed">
+                    <p className="homepage-hero-subtitle">
                         {t('home.hero.subtitle')}
                     </p>
-                    <div className="flex flex-wrap gap-4 mt-8">
+                    <div className="homepage-hero-buttons mt-8">
                         <Link to="/login" className="btn-primary">
                             {t('home.hero.primaryCta')}
                         </Link>
                         <Link to="/marketplace" className="btn-secondary">
                             {t('home.hero.secondaryCta')}
                         </Link>
-                        <Link to="/locations" className="btn-secondary bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90">
+                        <Link to="/locations" className="btn-secondary bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90" style={{ color: 'white' }}>
                             🌍 Browse by Location
                         </Link>
                     </div>
@@ -105,10 +103,10 @@ const HomePage: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
                     {/* Shop Owner Path */}
-                    <div className="bg-white rounded-xl p-6 shadow-xl border border-blue-200 hover:shadow-2xl transition-all transform hover:scale-105">
+                    <div className="homepage-path-card blue">
                         <div className="text-center">
-                            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span className="text-3xl">🏪</span>
+                            <div className="homepage-icon-container bg-blue-100">
+                                <span>🏪</span>
                             </div>
                             <h3 className="text-2xl font-bold text-blue-800 mb-4">{t('home.chooseYourPath.shopOwner.title')}</h3>
                             <p className="text-base text-gray-600 mb-6">
@@ -131,10 +129,10 @@ const HomePage: React.FC = () => {
                     </div>
 
                     {/* Affiliate Path */}
-                    <div className="bg-white rounded-xl p-6 shadow-xl border border-green-200 hover:shadow-2xl transition-all transform hover:scale-105">
+                    <div className="homepage-path-card green">
                         <div className="text-center">
-                            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span className="text-3xl">📈</span>
+                            <div className="homepage-icon-container bg-green-100">
+                                <span>📈</span>
                             </div>
                             <h3 className="text-2xl font-bold text-green-800 mb-4">{t('home.chooseYourPath.affiliate.title')}</h3>
                             <p className="text-base text-gray-600 mb-6">
@@ -157,10 +155,10 @@ const HomePage: React.FC = () => {
                     </div>
 
                     {/* Customer Path */}
-                    <div className="bg-white rounded-xl p-6 shadow-xl border border-purple-200 hover:shadow-2xl transition-all transform hover:scale-105">
+                    <div className="homepage-path-card purple">
                         <div className="text-center">
-                            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span className="text-3xl">🎁</span>
+                            <div className="homepage-icon-container bg-purple-100">
+                                <span>🎁</span>
                             </div>
                             <h3 className="text-2xl font-bold text-purple-800 mb-4">{t('home.chooseYourPath.customer.title')}</h3>
                             <p className="text-base text-gray-600 mb-6">
@@ -201,11 +199,11 @@ const HomePage: React.FC = () => {
                 <div className="blur-blob -left-12 bottom-0" />
                 <div className="relative z-10 max-w-3xl">
                     <CouponGenerator />
-                    <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 text-white/90">
+                    <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {metrics.map((metric) => (
-                            <div key={metric.label} className="stat-chip">
-                                <span className="text-3xl font-semibold">{metric.value}</span>
-                                <span className="text-sm uppercase tracking-wide">{metric.label}</span>
+                            <div key={metric.label} className="homepage-metric">
+                                <span className="homepage-metric-value">{metric.value}</span>
+                                <span className="homepage-metric-label">{metric.label}</span>
                             </div>
                         ))}
                     </div>
@@ -224,21 +222,21 @@ const HomePage: React.FC = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                    <div className="bg-white rounded-2xl p-8 text-center shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                    <div className="homepage-coverage-stat">
                         <div className="inline-flex p-4 rounded-full bg-blue-100 text-blue-600 mb-4">
                             <GlobeAltIcon className="h-8 w-8" />
                         </div>
                         <div className="text-4xl font-bold text-gray-800 mb-2">25+</div>
                         <div className="text-gray-600 font-medium">{t('home.globalCoverage.countries')}</div>
                     </div>
-                    <div className="bg-white rounded-2xl p-8 text-center shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                    <div className="homepage-coverage-stat">
                         <div className="inline-flex p-4 rounded-full bg-purple-100 text-purple-600 mb-4">
                             <MapPinIcon className="h-8 w-8" />
                         </div>
                         <div className="text-4xl font-bold text-gray-800 mb-2">150+</div>
                         <div className="text-gray-600 font-medium">{t('home.globalCoverage.cities')}</div>
                     </div>
-                    <div className="bg-white rounded-2xl p-8 text-center shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                    <div className="homepage-coverage-stat">
                         <div className="inline-flex p-4 rounded-full bg-pink-100 text-pink-600 mb-4">
                             <MapPinIcon className="h-8 w-8" />
                         </div>
@@ -270,9 +268,9 @@ const HomePage: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {benefits.map((benefit) => (
-                        <div key={benefit.title} className="glass-panel p-6 flex flex-col gap-4">
-                            <span className="feature-icon">{benefit.icon}</span>
-                            <h3 className="text-xl font-semibold text-dark-gray">{benefit.title}</h3>
+                        <div key={benefit.title} className="homepage-benefit-card">
+                            <div className="homepage-benefit-icon">{benefit.icon}</div>
+                            <h3 className="text-xl font-semibold text-dark-gray mb-3">{benefit.title}</h3>
                             <p className="text-gray-600 leading-relaxed">{benefit.description}</p>
                         </div>
                     ))}
@@ -294,14 +292,12 @@ const HomePage: React.FC = () => {
                     </div>
                     <div className="space-y-6">
                         {steps.map((step, index) => (
-                            <div key={step.title} className="flex gap-4">
-                                <div className="flex-shrink-0">
-                                    <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary font-semibold flex items-center justify-center">
-                                        {index + 1}
-                                    </div>
+                            <div key={step.title} className="homepage-step">
+                                <div className="homepage-step-number">
+                                    {index + 1}
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-lg text-dark-gray">{step.title}</p>
+                                    <p className="font-semibold text-lg text-dark-gray mb-2">{step.title}</p>
                                     <p className="text-gray-600">{step.description}</p>
                                 </div>
                             </div>
@@ -311,12 +307,12 @@ const HomePage: React.FC = () => {
             </section>
 
 
-            <section className="glass-panel p-10 text-center">
+            <section className="homepage-cta-section">
                 <p className="hero-pill mx-auto mb-4 text-sm text-primary/90 bg-primary/5 border-primary/20">
                     {t('home.ctaSection.highlight')}
                 </p>
-                <h3 className="text-3xl font-bold text-dark-gray mb-4">{t('home.ctaSection.title')}</h3>
-                <p className="text-gray-600 max-w-2xl mx-auto">{t('home.ctaSection.subtitle')}</p>
+                <h3 className="homepage-section-title mb-4">{t('home.ctaSection.title')}</h3>
+                <p className="homepage-section-subtitle mx-auto mb-6">{t('home.ctaSection.subtitle')}</p>
                 <div className="flex flex-wrap gap-4 justify-center mt-8">
                     <Link to="/login" className="btn-primary">
                         {t('home.ctaSection.primary')}

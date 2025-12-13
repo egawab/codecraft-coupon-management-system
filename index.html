@@ -3,7 +3,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#bf0000" />
     <title>Kobonz - Coupon Management Platform</title>
     <meta name="description" content="Kobonz.site - A comprehensive coupon management platform for merchants and marketers. Create, share, and track discount coupons." />
     <meta name="keywords" content="coupons, discounts, merchants, marketplace, kobonz" />
@@ -11,34 +15,28 @@
     <meta property="og:description" content="Create, share, and track discount coupons with Kobonz" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Kobonz" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kobonz - Coupon Management Platform" />
     <link rel="canonical" href="https://kobonz.site" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              primary: '#007AFF',
-              success: '#34C759',
-              alert: '#FF3B30',
-              pending: '#FF9500',
-              'dark-gray': '#1C1C1E',
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
+              primary: {
+                DEFAULT: '#bf0000',
+                dark: '#9a0000',
+                light: '#ff1a1a',
               },
-              slideInUp: {
-                '0%': { opacity: '0', transform: 'translateY(20px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-            },
-            animation: {
-              fadeIn: 'fadeIn 0.5s ease-out',
-              slideInUp: 'slideInUp 0.5s ease-out',
-            },
+              success: '#16a34a',
+              warning: '#ea580c',
+              error: '#dc2626',
+              info: '#2563eb',
+            }
           }
         }
       }
@@ -63,9 +61,26 @@
 }
 </script>
 <link rel="stylesheet" href="/index.css">
+    <link rel="stylesheet" href="/marketplace-premium.css">
+    <link rel="stylesheet" href="/homepage-premium.css">
+    <link rel="stylesheet" href="/visual-enhancements.css">
+    <link rel="stylesheet" href="/ux-enhancements.css">
+    <link rel="stylesheet" href="/dashboard-charts.css">
+    <link rel="stylesheet" href="/interactive-features.css">
+    <link rel="stylesheet" href="/performance-optimizations.css">
 </head>
-  <body class="bg-slate-50 text-dark-gray">
+  <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
+    <script>
+      // Register Service Worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => console.log('SW registered:', registration))
+            .catch(error => console.log('SW registration failed:', error));
+        });
+      }
+    </script>
   </body>
 </html>

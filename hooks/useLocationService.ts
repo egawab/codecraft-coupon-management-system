@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { logger } from '../utils/logger';
 import { 
   getAllCountries, 
   getCitiesForCountry, 
@@ -48,7 +49,7 @@ export function useCountries() {
       } catch (err) {
         if (mounted) {
           setError('Failed to load countries');
-          console.error('Error loading countries:', err);
+          logger.error('Error loading countries:', err);
         }
       } finally {
         if (mounted) {
@@ -91,7 +92,7 @@ export function useCities(countryCode: string | null) {
       } catch (err) {
         if (mounted) {
           setError('Failed to load cities');
-          console.error('Error loading cities:', err);
+          logger.error('Error loading cities:', err);
         }
       } finally {
         if (mounted) {
@@ -134,7 +135,7 @@ export function useDistricts(cityName: string | null, countryCode: string | null
       } catch (err) {
         if (mounted) {
           setError('Failed to load districts');
-          console.error('Error loading districts:', err);
+          logger.error('Error loading districts:', err);
         }
       } finally {
         if (mounted) {

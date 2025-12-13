@@ -25,11 +25,71 @@ export default defineConfig(({ mode }) => {
         assetsDir: 'assets',
         copyPublicDir: true,
         minify: 'esbuild',
+        cssMinify: true,
+        cssCodeSplit: true,
         rollupOptions: {
           output: {
-            manualChunks: undefined,
+            manualChunks: (id) => {
+              // Vendor chunks - separate large dependencies
+              if (id.includes('node_modules')) {
+                if (id.includes('firebase')) {
+                  return 'vendor-firebase';
+                }
+                if (id.includes('react') || id.includes('react-dom')) {
+                  return 'vendor-react';
+                }
+                if (id.includes('react-router')) {
+                  return 'vendor-router';
+                }
+                if (id.includes('@heroicons')) {
+                  return 'vendor-icons';
+                }
+                return 'vendor-other';
+              }
+              
+              // Location data chunks
+              if (id.includes('utils/locationData/')) {
+                const continent = id.split('locationData/')[1]?.split('.')[0];
+                if (continent) {
+                  return `location-${continent}`;
+                }
+              }
+              
+              // Dashboard chunks - separate large pages
+              if (id.includes('pages/')) {
+                if (id.includes('SuperAdminDashboard')) {
+                  return 'page-super-admin';
+                }
+                if (id.includes('ShopOwnerDashboard')) {
+                  return 'page-shop-owner';
+                }
+                if (id.includes('AffiliateDashboard')) {
+                  return 'page-affiliate';
+                }
+                if (id.includes('AdminDashboard')) {
+                  return 'page-admin';
+                }
+                if (id.includes('MarketplacePage')) {
+                  return 'page-marketplace';
+                }
+              }
+              
+              // Services chunk
+              if (id.includes('services/')) {
+                return 'services';
+              }
+              
+              // Utils chunk
+              if (id.includes('utils/') && !id.includes('locationData')) {
+                return 'utils';
+              }
+            },
             format: 'es',
             hoistTransitiveImports: false,
+            // Optimize chunk names for better caching
+            chunkFileNames: 'assets/[name]-[hash].js',
+            entryFileNames: 'assets/[name]-[hash].js',
+            assetFileNames: 'assets/[name]-[hash].[ext]',
           },
           external: [],
           preserveEntrySignatures: 'strict'
@@ -39,7 +99,9 @@ export default defineConfig(({ mode }) => {
           transformMixedEsModules: true,
         },
         target: 'es2020',
-        sourcemap: true
+        sourcemap: true,
+        // Increase chunk size warning limit since we're splitting intelligently
+        chunkSizeWarningLimit: 600
       }
     };
 });

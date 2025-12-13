@@ -5,6 +5,7 @@
  * Integrates GeoNames API with fallback to static data
  */
 
+import { logger } from '../utils/logger';
 import { 
   getAllCountries as getGeoNamesCountries,
   getTopCitiesForCountry as getGeoNamesTopCities,
@@ -71,12 +72,12 @@ export async function initializeLocationService(): Promise<void> {
   try {
     geonamesAvailable = await validateGeoNamesSetup();
     if (geonamesAvailable) {
-      console.log('✅ Location Service: Using GeoNames (complete global data)');
+      logger.debug('✅ Location Service: Using GeoNames (complete global data)');
     } else {
-      console.log('⚠️ Location Service: Falling back to static data (limited coverage)');
+      logger.debug('⚠️ Location Service: Falling back to static data (limited coverage)');
     }
   } catch (error) {
-    console.error('Location service initialization failed:', error);
+    logger.error('Location service initialization failed:', error);
     geonamesAvailable = false;
   }
 }
@@ -96,7 +97,7 @@ export async function getAllCountries(): Promise<Country[]> {
       }));
     }
   } catch (error) {
-    console.warn('GeoNames unavailable, using static countries:', error);
+    logger.warn('GeoNames unavailable, using static countries:', error);
   }
   
   // Fallback to static data
@@ -122,7 +123,7 @@ export async function getCitiesForCountry(countryCode: string): Promise<City[]> 
       }));
     }
   } catch (error) {
-    console.warn(`GeoNames unavailable for ${countryCode}, using static cities:`, error);
+    logger.warn(`GeoNames unavailable for ${countryCode}, using static cities:`, error);
   }
   
   // Fallback to static data
@@ -154,7 +155,7 @@ export async function searchCitiesByName(
       state: c.adminName1,
     }));
   } catch (error) {
-    console.error('City search failed:', error);
+    logger.error('City search failed:', error);
     return [];
   }
 }
@@ -176,7 +177,7 @@ export async function getDistrictsForCity(
       }));
     }
   } catch (error) {
-    console.warn(`GeoNames unavailable for ${cityName} districts:`, error);
+    logger.warn(`GeoNames unavailable for ${cityName} districts:`, error);
   }
   
   // No fallback for districts in static data
@@ -203,7 +204,7 @@ export async function searchDistrictsByName(
       name: d.name,
     }));
   } catch (error) {
-    console.error('District search failed:', error);
+    logger.error('District search failed:', error);
     return [];
   }
 }
@@ -219,7 +220,7 @@ export async function searchLocations(query: string): Promise<any[]> {
   try {
     return await searchGeoNames(query, 50);
   } catch (error) {
-    console.error('Location search failed:', error);
+    logger.error('Location search failed:', error);
     return [];
   }
 }

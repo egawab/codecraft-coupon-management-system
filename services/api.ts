@@ -1,5 +1,6 @@
 
 import { db, functions } from '../firebase';
+import { logger } from '../utils/logger';
 import { httpsCallable } from 'firebase/functions';
 import {
     collection,
@@ -54,8 +55,8 @@ const redeemCouponCallable = httpsCallable(functions, 'redeemCouponCallable');
 const trackCouponClickCallable = httpsCallable(functions, 'trackCouponClickCallable');
 
 // SAFE: Internal fallback data generation without circular imports
-const generateFallbackData = (collectionName: string): any[] => {
-    console.log(`🔧 SAFE: Generating fallback data for ${collectionName}`);
+const generateFallbackData = (collectionName: string): Record<string, unknown>[] => {
+    logger.debug(`🔧 SAFE: Generating fallback data for ${collectionName}`);
     const now = new Date();
     
     switch (collectionName) {
@@ -92,13 +93,13 @@ const generateFallbackData = (collectionName: string): any[] => {
                 discountValue: Math.floor(Math.random() * 50) + 10
             }));
         default:
-            console.log(`⚠️ No fallback data defined for ${collectionName}`);
+            logger.debug(`⚠️ No fallback data defined for ${collectionName}`);
             return [];
     }
 };
 
 // SAFE: Generate specific fallback data for different use cases
-const generateSafeRedemptionData = (shopId: string): any[] => {
+const generateSafeRedemptionData = (shopId: string): Record<string, unknown>[] => {
     return Array.from({ length: 5 }, (_, i) => ({
         id: `fallback_redemption_${shopId}_${i}`,
         couponId: `fallback_coupon_${i}`,
@@ -110,7 +111,7 @@ const generateSafeRedemptionData = (shopId: string): any[] => {
     }));
 };
 
-const generateSafeAffiliateData = (shopId: string): any[] => {
+const generateSafeAffiliateData = (shopId: string): Record<string, unknown>[] => {
     return Array.from({ length: 3 }, (_, i) => ({
         affiliateId: `fallback_affiliate_${i}`,
         affiliateName: `Fallback Affiliate ${i + 1}`,
@@ -120,7 +121,7 @@ const generateSafeAffiliateData = (shopId: string): any[] => {
     }));
 };
 
-const generateSafeCustomerData = (shopId: string): any[] => {
+const generateSafeCustomerData = (shopId: string): Record<string, unknown>[] => {
     return Array.from({ length: 4 }, (_, i) => ({
         id: `fallback_customer_${shopId}_${i}`,
         userId: `fallback_customer_${i}`,
@@ -138,7 +139,7 @@ export const api = {
     // CRITICAL: Direct Firebase collection access to bypass API caching issues
     getDirectFirebaseCollection: async (collectionName: string): Promise<any[]> => {
         try {
-            console.log(`🔥 DIRECT: Fetching ${collectionName} collection from Firebase...`);
+            logger.debug(`🔥 DIRECT: Fetching ${collectionName} collection from Firebase...`);
             
             const collectionRef = collection(db, collectionName);
             const snapshot = await getDocs(collectionRef);
@@ -152,10 +153,10 @@ export const api = {
                 timestamp: doc.data().timestamp?.toDate?.() || doc.data().timestamp || new Date()
             }));
             
-            console.log(`🔥 DIRECT: Found ${data.length} records in ${collectionName}`);
+            logger.debug(`🔥 DIRECT: Found ${data.length} records in ${collectionName}`);
             return data;
         } catch (error) {
-            console.error(`❌ FIREBASE: Error fetching ${collectionName}:`, error);
+            logger.error(`❌ FIREBASE: Error fetching ${collectionName}:`, error);
             return [];
         }
     },
@@ -165,13 +166,13 @@ export const api = {
         const unsubscribes: (() => void)[] = [];
         
         try {
-            console.log('🔴 Setting up real-time intelligence listeners...');
+            logger.debug('🔴 Setting up real-time intelligence listeners...');
             
             // Listen to shops collection
             const shopsQuery = query(collection(db, 'shops'));
             const unsubShops = onSnapshot(shopsQuery, (snapshot) => {
                 const shops = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                console.log(`🔴 Real-time shops update: ${shops.length} shops`);
+                logger.debug(`🔴 Real-time shops update: ${shops.length} shops`);
                 callback({ type: 'shops', data: shops });
             });
             unsubscribes.push(unsubShops);
@@ -184,7 +185,7 @@ export const api = {
                     ...doc.data(),
                     redeemedAt: doc.data().redeemedAt?.toDate?.() || new Date()
                 }));
-                console.log(`🔴 Real-time redemptions update: ${redemptions.length} redemptions`);
+                logger.debug(`🔴 Real-time redemptions update: ${redemptions.length} redemptions`);
                 callback({ type: 'redemptions', data: redemptions });
             });
             unsubscribes.push(unsubRedemptions);
@@ -197,7 +198,7 @@ export const api = {
                     ...doc.data(),
                     createdAt: doc.data().createdAt?.toDate?.() || new Date()
                 }));
-                console.log(`🔴 Real-time coupons update: ${coupons.length} coupons`);
+                logger.debug(`🔴 Real-time coupons update: ${coupons.length} coupons`);
                 callback({ type: 'coupons', data: coupons });
             });
             unsubscribes.push(unsubCoupons);
@@ -210,24 +211,24 @@ export const api = {
                     ...doc.data(),
                     timestamp: doc.data().timestamp?.toDate?.() || new Date()
                 }));
-                console.log(`🔴 Real-time customer data update: ${customers.length} customers`);
+                logger.debug(`🔴 Real-time customer data update: ${customers.length} customers`);
                 callback({ type: 'customers', data: customers });
             });
             unsubscribes.push(unsubCustomers);
             
-            console.log('✅ Real-time intelligence listeners setup complete');
+            logger.debug('✅ Real-time intelligence listeners setup complete');
             
         } catch (error) {
-            console.error('❌ Error setting up real-time listeners:', error);
+            logger.error('❌ Error setting up real-time listeners:', error);
         }
         
         return () => {
-            console.log('🔴 Cleaning up real-time intelligence listeners...');
+            logger.debug('🔴 Cleaning up real-time intelligence listeners...');
             unsubscribes.forEach(unsub => {
                 try {
                     unsub();
                 } catch (error) {
-                    console.error('❌ Error unsubscribing:', error);
+                    logger.error('❌ Error unsubscribing:', error);
                 }
             });
         };
@@ -243,7 +244,7 @@ export const api = {
         [key: string]: any;
     }): Promise<void> => {
         try {
-            console.log('📝 CRITICAL: Logging user activity for Intelligence Center:', activityData);
+            logger.debug('📝 CRITICAL: Logging user activity for Intelligence Center:', activityData);
             
             const timestamp = new Date();
             const logEntry = {
@@ -264,9 +265,9 @@ export const api = {
             ];
             
             await Promise.all(promises);
-            console.log('✅ CRITICAL: Activity logged to all tracking collections');
+            logger.debug('✅ CRITICAL: Activity logged to all tracking collections');
         } catch (error) {
-            console.error('❌ FIREBASE: Failed to log user activity, using mock fallback:', error);
+            logger.error('❌ FIREBASE: Failed to log user activity, using mock fallback:', error);
             return [];
         }
     },
@@ -288,16 +289,28 @@ export const api = {
     },
 
     getCouponsForShop: async (shopOwnerId: string): Promise<Coupon[]> => {
-        const q = query(collection(db, "coupons"), where("shopOwnerId", "==", shopOwnerId));
-        const querySnapshot = await getDocs(q);
-        const coupons = querySnapshot.docs.map(fromFirestore) as Coupon[];
-        return coupons.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        try {
+            logger.debug(`🔍 Fetching coupons for shop owner: ${shopOwnerId}`);
+            const q = query(collection(db, "coupons"), where("shopOwnerId", "==", shopOwnerId));
+            const querySnapshot = await getDocs(q);
+            const coupons = querySnapshot.docs.map(fromFirestore) as Coupon[];
+            logger.debug(`✅ Found ${coupons.length} coupons for shop owner ${shopOwnerId}`);
+            
+            if (coupons.length > 0) {
+                logger.debug(`📝 Sample coupon:`, coupons[0]);
+            }
+            
+            return coupons.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        } catch (error) {
+            logger.error(`❌ Error fetching coupons for shop ${shopOwnerId}:`, error);
+            throw error;
+        }
     },
 
     // NEW: Get detailed redemption data for a shop
     getRedemptionsForShop: async (shopId: string): Promise<any[]> => {
         try {
-            console.log('🔍 FIREBASE: Fetching redemptions for shop:', shopId);
+            logger.debug('🔍 FIREBASE: Fetching redemptions for shop:', shopId);
             const redemptionsCollection = collection(db, "redemptions");
             const q = query(redemptionsCollection, where("shopOwnerId", "==", shopId), orderBy("redeemedAt", "desc"));
             const snapshot = await getDocs(q);
@@ -306,11 +319,11 @@ export const api = {
                 ...doc.data(),
                 redeemedAt: doc.data().redeemedAt?.toDate?.() || new Date(doc.data().redeemedAt || Date.now())
             }));
-            console.log(`✅ FIREBASE: Found ${data.length} redemptions for shop ${shopId}`);
+            logger.debug(`✅ FIREBASE: Found ${data.length} redemptions for shop ${shopId}`);
             return data;
         } catch (error) {
-            console.error('❌ FIREBASE: Error fetching shop redemptions, falling back to mock data:', error);
-            console.log('🔄 FALLBACK: Using safe fallback data for redemptions...');
+            logger.error('❌ FIREBASE: Error fetching shop redemptions, falling back to mock data:', error);
+            logger.debug('🔄 FALLBACK: Using safe fallback data for redemptions...');
             return generateSafeRedemptionData(shopId);
         }
     },
@@ -318,7 +331,7 @@ export const api = {
     // NEW: Get all affiliates who promoted this shop's coupons
     getAffiliatesForShop: async (shopId: string): Promise<any[]> => {
         try {
-            console.log('🔍 FIREBASE: Fetching affiliates for shop:', shopId);
+            logger.debug('🔍 FIREBASE: Fetching affiliates for shop:', shopId);
             const redemptionsCollection = collection(db, "redemptions");
             const q = query(redemptionsCollection, where("shopOwnerId", "==", shopId));
             const snapshot = await getDocs(q);
@@ -349,11 +362,11 @@ export const api = {
             });
             
             const data = Array.from(affiliateMap.values());
-            console.log(`✅ FIREBASE: Found ${data.length} affiliates for shop ${shopId}`);
+            logger.debug(`✅ FIREBASE: Found ${data.length} affiliates for shop ${shopId}`);
             return data;
         } catch (error) {
-            console.error('❌ FIREBASE: Error fetching shop affiliates, falling back to mock data:', error);
-            console.log('🔄 FALLBACK: Using safe fallback data for affiliates...');
+            logger.error('❌ FIREBASE: Error fetching shop affiliates, falling back to mock data:', error);
+            logger.debug('🔄 FALLBACK: Using safe fallback data for affiliates...');
             return generateSafeAffiliateData(shopId);
         }
     },
@@ -361,7 +374,7 @@ export const api = {
     // Get all customer data from redemptions for this shop
     getCustomerDataForShop: async (shopId: string): Promise<any[]> => {
         try {
-            console.log('🔍 Fetching customer data for shop:', shopId);
+            logger.debug('🔍 Fetching customer data for shop:', shopId);
             
             let allCustomerData: any[] = [];
             
@@ -382,10 +395,10 @@ export const api = {
                     redeemedAt: doc.data().timestamp?.toDate?.() || doc.data().redeemedAt?.toDate?.() || doc.data().createdAt?.toDate?.() || new Date()
                 }));
                 
-                console.log(`📊 Found ${customerData.length} customer records in shopCustomerData for shop ${shopId}`);
+                logger.debug(`📊 Found ${customerData.length} customer records in shopCustomerData for shop ${shopId}`);
                 allCustomerData = [...customerData];
             } catch (orderError) {
-                console.log('⚠️ Timestamp ordering failed, trying createdAt ordering...');
+                logger.debug('⚠️ Timestamp ordering failed, trying createdAt ordering...');
                 try {
                     const shopCustomerDataCollection = collection(db, "shopCustomerData");
                     const q = query(
@@ -402,10 +415,10 @@ export const api = {
                         redeemedAt: doc.data().timestamp?.toDate?.() || doc.data().redeemedAt?.toDate?.() || doc.data().createdAt?.toDate?.() || new Date()
                     }));
                     
-                    console.log(`📊 Found ${customerData.length} customer records in shopCustomerData (via createdAt) for shop ${shopId}`);
+                    logger.debug(`📊 Found ${customerData.length} customer records in shopCustomerData (via createdAt) for shop ${shopId}`);
                     allCustomerData = [...customerData];
                 } catch (createdAtError) {
-                    console.log('⚠️ CreatedAt ordering also failed, fetching without ordering...');
+                    logger.debug('⚠️ CreatedAt ordering also failed, fetching without ordering...');
                     const shopCustomerDataCollection = collection(db, "shopCustomerData");
                     const q = query(shopCustomerDataCollection, where("shopOwnerId", "==", shopId));
                     
@@ -417,14 +430,14 @@ export const api = {
                         redeemedAt: doc.data().timestamp?.toDate?.() || doc.data().redeemedAt?.toDate?.() || doc.data().createdAt?.toDate?.() || new Date()
                     }));
                     
-                    console.log(`📊 Found ${customerData.length} customer records in shopCustomerData (no ordering) for shop ${shopId}`);
+                    logger.debug(`📊 Found ${customerData.length} customer records in shopCustomerData (no ordering) for shop ${shopId}`);
                     allCustomerData = [...customerData];
                 }
             }
             
             // 2. Also check redemptions collection for additional customer data
             try {
-                console.log('📋 Also checking redemptions collection for additional customer data...');
+                logger.debug('📋 Also checking redemptions collection for additional customer data...');
                 
                 const redemptionsCollection = collection(db, "redemptions");
                 const redemptionQuery = query(redemptionsCollection, where("shopOwnerId", "==", shopId));
@@ -439,7 +452,7 @@ export const api = {
                     }))
                     .filter(redemption => redemption.customerName || redemption.customerPhone || redemption.customerEmail);
                 
-                console.log(`📊 Found ${redemptionData.length} redemptions with customer data`);
+                logger.debug(`📊 Found ${redemptionData.length} redemptions with customer data`);
                 
                 // Merge with existing data (avoid duplicates based on couponId + userId)
                 const existingKeys = new Set(allCustomerData.map(item => `${item.couponId}-${item.userId}`));
@@ -448,9 +461,9 @@ export const api = {
                 );
                 
                 allCustomerData = [...allCustomerData, ...newRedemptionData];
-                console.log(`📊 Total customer records after merging: ${allCustomerData.length}`);
+                logger.debug(`📊 Total customer records after merging: ${allCustomerData.length}`);
             } catch (redemptionError) {
-                console.error('❌ Error fetching from redemptions collection:', redemptionError);
+                logger.error('❌ Error fetching from redemptions collection:', redemptionError);
             }
             
             // 3. Sort all data by redemption date (newest first)
@@ -460,11 +473,11 @@ export const api = {
                 return dateB - dateA;
             });
             
-            console.log(`✅ Returning ${allCustomerData.length} total customer records for shop ${shopId}`);
+            logger.debug(`✅ Returning ${allCustomerData.length} total customer records for shop ${shopId}`);
             
             // Log sample data for debugging if we have records
             if (allCustomerData.length > 0) {
-                console.log('📝 Sample customer data:', {
+                logger.debug('📝 Sample customer data:', {
                     sampleRecord: allCustomerData[0],
                     totalRecords: allCustomerData.length,
                     sources: [...new Set(allCustomerData.map(item => item.source))]
@@ -473,8 +486,8 @@ export const api = {
             
             return allCustomerData;
         } catch (error) {
-            console.error('❌ FIREBASE: Error fetching customer data for shop, falling back to mock data:', error);
-            console.log('🔄 FALLBACK: Using safe fallback data for customer data...');
+            logger.error('❌ FIREBASE: Error fetching customer data for shop, falling back to mock data:', error);
+            logger.debug('🔄 FALLBACK: Using safe fallback data for customer data...');
             return generateSafeCustomerData(shopId);
         }
     },
@@ -482,7 +495,7 @@ export const api = {
     // NEW: Get customer data for affiliate dashboard
     getCustomerDataForAffiliate: async (affiliateId: string): Promise<any[]> => {
         try {
-            console.log('🔍 FIREBASE: Fetching customer data for affiliate:', affiliateId);
+            logger.debug('🔍 FIREBASE: Fetching customer data for affiliate:', affiliateId);
             
             let allCustomerData: any[] = [];
             
@@ -503,7 +516,7 @@ export const api = {
                     redeemedAt: doc.data().timestamp?.toDate?.() || doc.data().redeemedAt?.toDate?.() || doc.data().createdAt?.toDate?.() || new Date()
                 }));
                 
-                console.log(`📊 Found ${customerData.length} customer records in affiliateCustomerData for affiliate ${affiliateId}`);
+                logger.debug(`📊 Found ${customerData.length} customer records in affiliateCustomerData for affiliate ${affiliateId}`);
                 allCustomerData = [...customerData];
             } catch (orderError) {
                 // Fallback without ordering if index doesn't exist
@@ -519,16 +532,16 @@ export const api = {
                         redeemedAt: doc.data().timestamp?.toDate?.() || doc.data().redeemedAt?.toDate?.() || doc.data().createdAt?.toDate?.() || new Date()
                     }));
                     
-                    console.log(`📊 Found ${customerData.length} customer records in affiliateCustomerData (no ordering) for affiliate ${affiliateId}`);
+                    logger.debug(`📊 Found ${customerData.length} customer records in affiliateCustomerData (no ordering) for affiliate ${affiliateId}`);
                     allCustomerData = [...customerData];
                 } catch (noOrderError) {
-                    console.log('⚠️ No affiliateCustomerData collection found, checking redemptions...');
+                    logger.debug('⚠️ No affiliateCustomerData collection found, checking redemptions...');
                 }
             }
             
             // 2. Also check redemptions collection for additional customer data
             try {
-                console.log('📋 Also checking redemptions collection for affiliate customer data...');
+                logger.debug('📋 Also checking redemptions collection for affiliate customer data...');
                 
                 const redemptionsCollection = collection(db, "redemptions");
                 const redemptionQuery = query(redemptionsCollection, where("affiliateId", "==", affiliateId));
@@ -543,7 +556,7 @@ export const api = {
                     }))
                     .filter(redemption => redemption.customerName || redemption.customerPhone || redemption.customerEmail);
                 
-                console.log(`📊 Found ${redemptionData.length} redemptions with customer data for affiliate`);
+                logger.debug(`📊 Found ${redemptionData.length} redemptions with customer data for affiliate`);
                 
                 // Merge with existing data (avoid duplicates based on couponId + userId)
                 const existingKeys = new Set(allCustomerData.map(item => `${item.couponId}-${item.userId}`));
@@ -552,9 +565,9 @@ export const api = {
                 );
                 
                 allCustomerData = [...allCustomerData, ...newRedemptionData];
-                console.log(`📊 Total customer records after merging: ${allCustomerData.length}`);
+                logger.debug(`📊 Total customer records after merging: ${allCustomerData.length}`);
             } catch (redemptionError) {
-                console.error('❌ Error fetching from redemptions collection for affiliate:', redemptionError);
+                logger.error('❌ Error fetching from redemptions collection for affiliate:', redemptionError);
             }
             
             // Sort by redemption date (newest first)
@@ -564,12 +577,12 @@ export const api = {
                 return dateB - dateA;
             });
             
-            console.log(`✅ Returning ${allCustomerData.length} total customer records for affiliate ${affiliateId}`);
+            logger.debug(`✅ Returning ${allCustomerData.length} total customer records for affiliate ${affiliateId}`);
             return allCustomerData;
             
         } catch (error) {
-            console.error('❌ FIREBASE: Error fetching customer data for affiliate, falling back to mock data:', error);
-            console.log('🔄 FALLBACK: Using safe fallback data for affiliate customer data...');
+            logger.error('❌ FIREBASE: Error fetching customer data for affiliate, falling back to mock data:', error);
+            logger.debug('🔄 FALLBACK: Using safe fallback data for affiliate customer data...');
             return generateSafeCustomerData(affiliateId);
         }
     },
@@ -577,7 +590,7 @@ export const api = {
     // NEW: Get redemptions for affiliate dashboard
     getRedemptionsForAffiliate: async (affiliateId: string): Promise<any[]> => {
         try {
-            console.log('🔍 FIREBASE: Fetching redemptions for affiliate:', affiliateId);
+            logger.debug('🔍 FIREBASE: Fetching redemptions for affiliate:', affiliateId);
             const redemptionsCollection = collection(db, "redemptions");
             const q = query(redemptionsCollection, where("affiliateId", "==", affiliateId), orderBy("redeemedAt", "desc"));
             const snapshot = await getDocs(q);
@@ -586,11 +599,11 @@ export const api = {
                 ...doc.data(),
                 redeemedAt: doc.data().redeemedAt?.toDate?.() || new Date(doc.data().redeemedAt || Date.now())
             }));
-            console.log(`✅ FIREBASE: Found ${data.length} redemptions for affiliate ${affiliateId}`);
+            logger.debug(`✅ FIREBASE: Found ${data.length} redemptions for affiliate ${affiliateId}`);
             return data;
         } catch (error) {
-            console.error('❌ FIREBASE: Error fetching affiliate redemptions, falling back to mock data:', error);
-            console.log('🔄 FALLBACK: Using safe fallback data for affiliate redemptions...');
+            logger.error('❌ FIREBASE: Error fetching affiliate redemptions, falling back to mock data:', error);
+            logger.debug('🔄 FALLBACK: Using safe fallback data for affiliate redemptions...');
             return generateSafeRedemptionData(affiliateId);
         }
     },
@@ -605,14 +618,14 @@ export const api = {
         try {
             await trackCouponClickCallable({ couponId });
         } catch (error) {
-            console.error("Failed to track coupon click via cloud function:", error);
+            logger.error("Failed to track coupon click via cloud function:", error);
             try {
                 const couponRef = doc(db, "coupons", couponId);
                 await updateDoc(couponRef, {
                     clicks: increment(1)
                 });
             } catch (fallbackError) {
-                console.error("Failed to apply client-side click fallback:", fallbackError);
+                logger.error("Failed to apply client-side click fallback:", fallbackError);
             }
         }
     },
@@ -734,8 +747,9 @@ export const api = {
             const newDocRef = doc(couponsCollection);
             transaction.set(newDocRef, newCouponData);
             
-            console.log(`✅ Coupon created and tracked: ${sanitizedData.title} by ${shopOwner.name}`);
+            logger.debug(`✅ Coupon created and tracked: ${sanitizedData.title} by ${shopOwner.name}`);
             
+            // Return the coupon data with the generated ID
             return { 
                 ...sanitizedData, 
                 id: newDocRef.id, 
@@ -745,6 +759,13 @@ export const api = {
                 clicks: 0,
                 creationCost: couponCost
             };
+        }).then(async (createdCoupon) => {
+            // CRITICAL FIX: Wait a moment for Firestore to propagate the write
+            // This ensures the coupon will be visible in subsequent queries
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            logger.debug(`✅ Coupon ${createdCoupon.id} fully committed to Firestore`);
+            return createdCoupon;
         });
     },
 
@@ -754,7 +775,7 @@ export const api = {
             const result: any = await redeemCouponCallable({ couponId, affiliateId });
             return result.data as { success: boolean; message: string };
         } catch (e: any) {
-            console.warn("Cloud function error, falling back to client-side redeem:", e);
+            logger.warn("Cloud function error, falling back to client-side redeem:", e);
             // Fallback كامل للعمل على Spark
             try {
                 const couponRef = doc(db, "coupons", couponId);
@@ -894,8 +915,11 @@ export const api = {
                     }
 
                     // Handle referrer bonus using pre-read data
+                    // CRITICAL FIX: Skip updating shop owner's hasRedeemedFirstCoupon
+                    // because customer doesn't have permission to update shop owner's document
+                    // This field will be updated by the shop owner themselves when they redeem a coupon
                     if (!shopData.hasRedeemedFirstCoupon && shopData.referredBy && referrerData && referrerRef) {
-                        transaction.update(shopRef, { hasRedeemedFirstCoupon: true });
+                        // Award referrer bonus
                         transaction.update(referrerRef, { credits: increment(10000) });
                         const bonusLogRef = doc(adminLogs);
                         transaction.set(bonusLogRef, {
@@ -908,6 +932,9 @@ export const api = {
                         if (referralDocRef) {
                             shouldMarkReferralRewarded = true;
                         }
+                        
+                        // Log that we awarded the bonus (but can't update shop's hasRedeemedFirstCoupon)
+                        logger.debug(`✅ Awarded referrer bonus to ${referrerData.name} for shop ${shopData.name}'s first redemption`);
                     }
 
                     transaction.set(redemptionRef, redemptionPayload);
@@ -985,7 +1012,7 @@ export const api = {
                     message: "Coupon redeemed successfully.",
                 };
             } catch (fallbackError: any) {
-                console.error("Client-side redeem failed:", fallbackError);
+                logger.error("Client-side redeem failed:", fallbackError);
                 return {
                     success: false,
                     message: fallbackError.message || "Redeem failed. Please try again.",
@@ -996,7 +1023,7 @@ export const api = {
 
     redeemCouponWithCustomerData: async (couponId: string, affiliateId?: string | null, customerId?: string, customerData?: any): Promise<{ success: boolean; message: string }> => {
         try {
-            console.log('🔄 Processing customer redemption with data:', { couponId, affiliateId, customerId, hasCustomerData: !!customerData });
+            logger.debug('🔄 Processing customer redemption with data:', { couponId, affiliateId, customerId, hasCustomerData: !!customerData });
             
             // Get coupon data first to extract shop information
             const couponRef = doc(db, "coupons", couponId);
@@ -1007,13 +1034,13 @@ export const api = {
             }
             
             const couponData = couponSnap.data();
-            console.log('📋 Coupon data retrieved:', { shopOwnerId: couponData.shopOwnerId, title: couponData.title });
+            logger.debug('📋 Coupon data retrieved:', { shopOwnerId: couponData.shopOwnerId, title: couponData.title });
             
             // First redeem the coupon normally
             const result = await api.redeemCoupon(couponId, affiliateId, customerId);
             
             if (result.success && customerData) {
-                console.log('✅ Standard redemption successful, now storing customer data...');
+                logger.debug('✅ Standard redemption successful, now storing customer data...');
                 
                 // Get affiliate information if exists
                 let affiliateName = null;
@@ -1025,7 +1052,7 @@ export const api = {
                             affiliateName = affiliateSnap.data().name || 'Unknown Affiliate';
                         }
                     } catch (error) {
-                        console.log('Could not fetch affiliate name:', error);
+                        logger.debug('Could not fetch affiliate name:', error);
                     }
                 }
 
@@ -1077,20 +1104,20 @@ export const api = {
                     hasCompleteProfile: !!(customerData.name && customerData.phone && customerData.email && customerData.address)
                 };
 
-                console.log('📝 Storing customer data for shop owner dashboard:', comprehensiveCustomerData);
+                logger.debug('📝 Storing customer data for shop owner dashboard:', comprehensiveCustomerData);
 
                 try {
-                    console.log('💾 Starting customer data storage process...');
-                    console.log('📋 Data to store:', JSON.stringify(comprehensiveCustomerData, null, 2));
+                    logger.debug('💾 Starting customer data storage process...');
+                    logger.debug('📋 Data to store:', JSON.stringify(comprehensiveCustomerData, null, 2));
 
                     // 1. Store in shopCustomerData collection for Shop Owner dashboard
                     const shopCustomerDataRef = collection(db, "shopCustomerData");
                     const customerDocRef = await addDoc(shopCustomerDataRef, comprehensiveCustomerData);
-                    console.log('✅ Stored customer data in shopCustomerData collection with ID:', customerDocRef.id);
+                    logger.debug('✅ Stored customer data in shopCustomerData collection with ID:', customerDocRef.id);
 
                     // 2. If affiliate exists, ALSO store in affiliateCustomerData collection for Affiliate dashboard
                     if (affiliateId && affiliateName) {
-                        console.log('🤝 Storing affiliate customer data for affiliate:', affiliateId);
+                        logger.debug('🤝 Storing affiliate customer data for affiliate:', affiliateId);
                         
                         const affiliateCustomerData = {
                             ...comprehensiveCustomerData,
@@ -1102,11 +1129,11 @@ export const api = {
                         
                         const affiliateCustomerDataRef = collection(db, "affiliateCustomerData");
                         const affiliateDocRef = await addDoc(affiliateCustomerDataRef, affiliateCustomerData);
-                        console.log('✅ Stored affiliate customer data in affiliateCustomerData collection with ID:', affiliateDocRef.id);
+                        logger.debug('✅ Stored affiliate customer data in affiliateCustomerData collection with ID:', affiliateDocRef.id);
                     }
 
                     // 2. Also update the redemption record with customer data for complete tracking
-                    console.log('🔄 Updating redemption record with customer data...');
+                    logger.debug('🔄 Updating redemption record with customer data...');
                     const redemptionsCollection = collection(db, "redemptions");
                     const redemptionQuery = query(
                         redemptionsCollection, 
@@ -1136,13 +1163,13 @@ export const api = {
                         };
                         
                         await updateDoc(redemptionDocRef, redemptionUpdateData);
-                        console.log('✅ Updated redemption record with customer data:', redemptionDocRef.id);
+                        logger.debug('✅ Updated redemption record with customer data:', redemptionDocRef.id);
                     } else {
-                        console.log('⚠️ No matching redemption record found to update');
+                        logger.debug('⚠️ No matching redemption record found to update');
                     }
 
                     // 3. CRITICAL: Store data for ADMIN tracking as well
-                    console.log('👑 Storing admin activity tracking...');
+                    logger.debug('👑 Storing admin activity tracking...');
                     const adminActivityRef = collection(db, "adminActivityLog");
                     const adminActivityData = {
                         type: 'CUSTOMER_REDEMPTION',
@@ -1186,10 +1213,10 @@ export const api = {
                     };
                     
                     await addDoc(adminActivityRef, adminActivityData);
-                    console.log('✅ Admin activity tracking stored successfully');
+                    logger.debug('✅ Admin activity tracking stored successfully');
 
                     // 4. Verify the data was stored successfully
-                    console.log('🔍 Verifying customer data storage...');
+                    logger.debug('🔍 Verifying customer data storage...');
                     const verificationQuery = query(
                         shopCustomerDataRef,
                         where("shopOwnerId", "==", couponData.shopOwnerId),
@@ -1200,31 +1227,31 @@ export const api = {
                     const verificationSnapshot = await getDocs(verificationQuery);
                     
                     if (!verificationSnapshot.empty) {
-                        console.log('✅ Customer data storage verified successfully!');
-                        console.log('📊 Stored record ID:', verificationSnapshot.docs[0].id);
-                        console.log('📋 Verification data:', verificationSnapshot.docs[0].data());
+                        logger.debug('✅ Customer data storage verified successfully!');
+                        logger.debug('📊 Stored record ID:', verificationSnapshot.docs[0].id);
+                        logger.debug('📋 Verification data:', verificationSnapshot.docs[0].data());
                     } else {
-                        console.log('❌ Customer data verification failed - record not found!');
+                        logger.debug('❌ Customer data verification failed - record not found!');
                     }
 
-                    console.log('🎉 Customer data successfully stored - will appear in Shop Owner dashboard AND Admin dashboard');
+                    logger.debug('🎉 Customer data successfully stored - will appear in Shop Owner dashboard AND Admin dashboard');
                     
                 } catch (storageError) {
-                    console.error('❌ Failed to store customer data:', storageError);
-                    console.error('❌ Storage error details:', {
+                    logger.error('❌ Failed to store customer data:', storageError);
+                    logger.error('❌ Storage error details:', {
                         message: storageError.message,
                         code: storageError.code,
                         stack: storageError.stack
                     });
                     
                     // Don't fail the entire redemption - log the error but continue
-                    console.log('⚠️ Continuing with redemption despite storage error');
+                    logger.debug('⚠️ Continuing with redemption despite storage error');
                 }
             }
             
             return result;
         } catch (error) {
-            console.error("❌ Failed to process customer data redemption:", error);
+            logger.error("❌ Failed to process customer data redemption:", error);
             return { success: false, message: "Failed to process redemption. Please try again." };
         }
     },
@@ -1267,9 +1294,9 @@ export const api = {
                 followUpRequired: true
             });
 
-            console.log('Customer data notifications sent successfully');
+            logger.debug('Customer data notifications sent successfully');
         } catch (error) {
-            console.error('Failed to send customer data notifications:', error);
+            logger.error('Failed to send customer data notifications:', error);
             // Don't throw error to avoid breaking the redemption flow
         }
     },
@@ -1285,7 +1312,7 @@ export const api = {
 
     getAllRedemptions: async (): Promise<Redemption[]> => {
         try {
-            console.log('🔍 Admin fetching all redemptions...');
+            logger.debug('🔍 Admin fetching all redemptions...');
             let allRedemptions: any[] = [];
 
             // 1. Get standard redemptions
@@ -1294,15 +1321,15 @@ export const api = {
                 const q = query(redemptionsRef, orderBy("redeemedAt", "desc"));
                 const querySnapshot = await getDocs(q);
                 const standardRedemptions = querySnapshot.docs.map(fromFirestore) as Redemption[];
-                console.log(`📊 Found ${standardRedemptions.length} standard redemptions`);
+                logger.debug(`📊 Found ${standardRedemptions.length} standard redemptions`);
                 allRedemptions = [...standardRedemptions];
             } catch (orderError) {
-                console.log('⚠️ Error with ordered query, trying without ordering...');
+                logger.debug('⚠️ Error with ordered query, trying without ordering...');
                 const redemptionsRef = collection(db, "redemptions");
                 const q = query(redemptionsRef);
                 const querySnapshot = await getDocs(q);
                 const standardRedemptions = querySnapshot.docs.map(fromFirestore) as Redemption[];
-                console.log(`📊 Found ${standardRedemptions.length} standard redemptions (no ordering)`);
+                logger.debug(`📊 Found ${standardRedemptions.length} standard redemptions (no ordering)`);
                 allRedemptions = [...standardRedemptions];
             }
 
@@ -1319,7 +1346,7 @@ export const api = {
                     redeemedAt: doc.data().timestamp?.toDate?.() || doc.data().dateOccurred ? new Date(doc.data().dateOccurred) : new Date(),
                     source: 'adminActivityLog'
                 }));
-                console.log(`📊 Found ${adminActivityRedemptions.length} admin activity redemptions`);
+                logger.debug(`📊 Found ${adminActivityRedemptions.length} admin activity redemptions`);
 
                 // Merge avoiding duplicates
                 const existingKeys = new Set(allRedemptions.map(item => `${item.couponId}-${item.customerId || item.userId}`));
@@ -1328,7 +1355,7 @@ export const api = {
                 );
                 allRedemptions = [...allRedemptions, ...newActivityRedemptions];
             } catch (activityError) {
-                console.log('⚠️ Error fetching admin activity log:', activityError);
+                logger.debug('⚠️ Error fetching admin activity log:', activityError);
             }
 
             // 3. Get shop customer data for additional redemption info
@@ -1341,7 +1368,7 @@ export const api = {
                     redeemedAt: doc.data().timestamp?.toDate?.() || doc.data().redeemedAt?.toDate?.() || new Date(),
                     source: 'shopCustomerData'
                 }));
-                console.log(`📊 Found ${shopCustomerRedemptions.length} shop customer data records`);
+                logger.debug(`📊 Found ${shopCustomerRedemptions.length} shop customer data records`);
 
                 // Merge avoiding duplicates
                 const existingKeys = new Set(allRedemptions.map(item => `${item.couponId}-${item.customerId || item.userId}`));
@@ -1350,7 +1377,7 @@ export const api = {
                 );
                 allRedemptions = [...allRedemptions, ...newShopCustomerRedemptions];
             } catch (shopCustomerError) {
-                console.log('⚠️ Error fetching shop customer data:', shopCustomerError);
+                logger.debug('⚠️ Error fetching shop customer data:', shopCustomerError);
             }
 
             // Sort all redemptions by date (newest first)
@@ -1360,10 +1387,10 @@ export const api = {
                 return dateB - dateA;
             });
 
-            console.log(`✅ Admin: Total ${allRedemptions.length} redemptions found across all sources`);
+            logger.debug(`✅ Admin: Total ${allRedemptions.length} redemptions found across all sources`);
             return allRedemptions as Redemption[];
         } catch (error) {
-            console.error('❌ Error fetching all redemptions:', error);
+            logger.error('❌ Error fetching all redemptions:', error);
             return [];
         }
     },
@@ -1381,7 +1408,7 @@ export const api = {
             const querySnapshot = await getDocs(q);
             return querySnapshot.docs.map(fromFirestore) as AdminCreditLog[];
         } catch (error) {
-            console.log('⚠️ Error with ordered query, trying without ordering...');
+            logger.debug('⚠️ Error with ordered query, trying without ordering...');
             const q = query(collection(db, "adminCreditLogs"));
             const querySnapshot = await getDocs(q);
             const logs = querySnapshot.docs.map(fromFirestore) as AdminCreditLog[];
@@ -1397,7 +1424,7 @@ export const api = {
     // Track shop registration/creation for admin visibility
     trackShopCreation: async (shopData: any): Promise<void> => {
         try {
-            console.log('📝 Tracking shop creation for admin visibility:', shopData.name);
+            logger.debug('📝 Tracking shop creation for admin visibility:', shopData.name);
             
             // Log for admin tracking
             const adminActivityRef = collection(db, "adminActivityLog");
@@ -1450,9 +1477,9 @@ export const api = {
                 source: 'registration_form'
             });
 
-            console.log('✅ Shop creation tracked for admin dashboard');
+            logger.debug('✅ Shop creation tracked for admin dashboard');
         } catch (error) {
-            console.error('❌ Failed to track shop creation:', error);
+            logger.error('❌ Failed to track shop creation:', error);
             // Don't fail the registration process
         }
     },
@@ -1714,7 +1741,7 @@ export const api = {
             }).slice(0, 100); // Return latest 100 activities
 
         } catch (error) {
-            console.error('Error fetching system activity:', error);
+            logger.error('Error fetching system activity:', error);
             return [];
         }
     },
@@ -1722,7 +1749,7 @@ export const api = {
     // ★★★ CRITICAL: Missing getFullIntelligenceData function for SuperAdminDashboard ★★★
     getFullIntelligenceData: async (): Promise<any> => {
         try {
-            console.log('🔍 SUPER ADMIN: Fetching comprehensive intelligence data...');
+            logger.debug('🔍 SUPER ADMIN: Fetching comprehensive intelligence data...');
             
             // STEP 1: Get ALL data from ALL sources
             const [
@@ -1744,7 +1771,7 @@ export const api = {
                 api.getDirectFirebaseCollection('redemptions')
             ]);
             
-            console.log('🔥 SUPER ADMIN: Data retrieved from all sources');
+            logger.debug('🔥 SUPER ADMIN: Data retrieved from all sources');
             
             // STEP 2: Merge API data with direct Firebase data for completeness
             const mergedUsers = [...allUsers];
@@ -1768,13 +1795,13 @@ export const api = {
                 }
             });
             
-            console.log(`📊 SUPER ADMIN: Merged data - Users: ${mergedUsers.length}, Coupons: ${mergedCoupons.length}, Redemptions: ${mergedRedemptions.length}`);
+            logger.debug(`📊 SUPER ADMIN: Merged data - Users: ${mergedUsers.length}, Coupons: ${mergedCoupons.length}, Redemptions: ${mergedRedemptions.length}`);
             
             // STEP 3: Get comprehensive customer data
             const shopOwnerIds = mergedUsers.filter(u => u.roles && u.roles.includes('shop-owner')).map(u => u.id);
             const affiliateIds = mergedUsers.filter(u => u.roles && u.roles.includes('affiliate')).map(u => u.id);
             
-            console.log(`🏪 SUPER ADMIN: Processing ${shopOwnerIds.length} shops and ${affiliateIds.length} affiliates`);
+            logger.debug(`🏪 SUPER ADMIN: Processing ${shopOwnerIds.length} shops and ${affiliateIds.length} affiliates`);
             
             const [shopCustomerData, affiliateCustomerData] = await Promise.all([
                 Promise.all(shopOwnerIds.map(shopId => api.getCustomerDataForShop(shopId))),
@@ -1803,7 +1830,7 @@ export const api = {
                 return unique;
             }, [] as any[]);
             
-            console.log(`📊 SUPER ADMIN: Processed ${uniqueCustomers.length} unique customers`);
+            logger.debug(`📊 SUPER ADMIN: Processed ${uniqueCustomers.length} unique customers`);
             
             // STEP 4: Calculate comprehensive intelligence insights
             const intelligence = api.calculateFullIntelligenceInsights(uniqueCustomers, mergedUsers, mergedCoupons, mergedRedemptions);
@@ -1830,24 +1857,24 @@ export const api = {
                 dataLoaded: true
             };
             
-            console.log(`✅ SUPER ADMIN: Intelligence data ready with ${result.shopInsights.length} shops, ${result.affiliateInsights.length} affiliates, ${result.customerActivity.length} customers`);
+            logger.debug(`✅ SUPER ADMIN: Intelligence data ready with ${result.shopInsights.length} shops, ${result.affiliateInsights.length} affiliates, ${result.customerActivity.length} customers`);
             
             return result;
             
         } catch (error) {
-            console.error('❌ SUPER ADMIN: Error in getFullIntelligenceData:', error);
+            logger.error('❌ SUPER ADMIN: Error in getFullIntelligenceData:', error);
             throw error;
         }
     },
 
     // ★★★ CRITICAL: Intelligence calculation engine for comprehensive analytics ★★★
     calculateFullIntelligenceInsights: (customers: any[], users: any[], coupons: any[], redemptions: any[]) => {
-        console.log('🧠 Calculating full intelligence insights...');
+        logger.debug('🧠 Calculating full intelligence insights...');
         
         const shopOwners = users.filter(u => u.roles && u.roles.includes('shop-owner'));
         const affiliates = users.filter(u => u.roles && u.roles.includes('affiliate'));
         
-        console.log(`📊 Processing insights for ${shopOwners.length} shop owners and ${affiliates.length} affiliates`);
+        logger.debug(`📊 Processing insights for ${shopOwners.length} shop owners and ${affiliates.length} affiliates`);
         
         // 1. Complete Shop Insights
         const shopInsights = shopOwners.map(shop => {
@@ -1998,7 +2025,7 @@ export const api = {
             }
         };
 
-        console.log(`✅ Intelligence calculation complete - ${customerActivity.length} customers, ${shopInsights.length} shops, ${affiliateInsights.length} affiliates`);
+        logger.debug(`✅ Intelligence calculation complete - ${customerActivity.length} customers, ${shopInsights.length} shops, ${affiliateInsights.length} affiliates`);
 
         return {
             shopInsights: shopInsights.sort((a, b) => b.totalRedemptions - a.totalRedemptions),

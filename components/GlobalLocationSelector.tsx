@@ -10,10 +10,15 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { logger } from '../utils/logger';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
+import { logger } from '../utils/logger';
 import { getAllCountries } from '../services/geonamesApi';
+import { logger } from '../utils/logger';
 import { getCitiesForCountry, getDistrictsForCity } from '../services/locationService';
+import { logger } from '../utils/logger';
 import CitySearchSelector from './CitySearchSelector';
+import { logger } from '../utils/logger';
 
 interface LocationData {
   country: string;
@@ -79,7 +84,7 @@ const GlobalLocationSelector: React.FC<GlobalLocationSelectorProps> = ({
       setCountries(data);
     } catch (err) {
       setError('Failed to load countries. Please check your internet connection.');
-      console.error('Error loading countries:', err);
+      logger.error('Error loading countries:', err);
     } finally {
       setLoadingCountries(false);
     }
@@ -93,7 +98,7 @@ const GlobalLocationSelector: React.FC<GlobalLocationSelectorProps> = ({
       setCities(data);
     } catch (err) {
       setError('Failed to load cities. Please try again.');
-      console.error('Error loading cities:', err);
+      logger.error('Error loading cities:', err);
     } finally {
       setLoadingCities(false);
     }
@@ -107,7 +112,7 @@ const GlobalLocationSelector: React.FC<GlobalLocationSelectorProps> = ({
       setDistricts(data);
     } catch (err) {
       setError('Failed to load districts. You can continue without selecting a district.');
-      console.error('Error loading districts:', err);
+      logger.error('Error loading districts:', err);
     } finally {
       setLoadingDistricts(false);
     }

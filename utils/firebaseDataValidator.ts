@@ -12,7 +12,7 @@
 export const validateFirebaseData = (data: Record<string, any>, context = 'Unknown'): void => {
     const undefinedFields: string[] = [];
     
-    const checkForUndefined = (obj: any, path = ''): void => {
+    const checkForUndefined = (obj: unknown, path = ''): void => {
         if (obj === undefined) {
             undefinedFields.push(path || 'root');
             return;
@@ -37,8 +37,8 @@ export const validateFirebaseData = (data: Record<string, any>, context = 'Unkno
             `Fields with undefined values: ${undefinedFields.join(', ')}\n` +
             `This would cause a Firebase error. Data has been blocked.`
         );
-        console.error(error.message);
-        console.error('Problematic data:', JSON.stringify(data, null, 2));
+        logger.error(error.message);
+        logger.error('Problematic data:', JSON.stringify(data, null, 2));
         throw error;
     }
 };
@@ -64,7 +64,7 @@ export const prepareForFirebase = <T extends Record<string, any>>(
 /**
  * Specifically for coupon data - adds extra validation
  */
-export const prepareCouponForFirebase = (data: any, context = 'Coupon Operation'): any => {
+export const prepareCouponForFirebase = (data: unknown, context = 'Coupon Operation'): unknown => {
     // First apply general Firebase preparation
     const prepared = prepareForFirebase(data, context);
     
@@ -78,7 +78,7 @@ export const prepareCouponForFirebase = (data: any, context = 'Coupon Operation'
     }
     
     if (prepared.validityDays !== undefined && prepared.expiryDate !== undefined) {
-        console.warn(`⚠️ WARNING: Both validityDays and expiryDate are present in ${context}. This might indicate incomplete sanitization.`);
+        logger.warn(`⚠️ WARNING: Both validityDays and expiryDate are present in ${context}. This might indicate incomplete sanitization.`);
     }
     
     return prepared;

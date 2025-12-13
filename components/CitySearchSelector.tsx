@@ -8,9 +8,14 @@
  * - Professional UX - no long waits
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { logger } from '../utils/logger';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { logger } from '../utils/logger';
 import { searchCitiesByName } from '../services/locationService';
+import { logger } from '../utils/logger';
+import { useDebounce } from '../hooks/useDebounce';
+import { logger } from '../utils/logger';
 
 interface City {
   id: string | number;
@@ -42,54 +47,61 @@ const CitySearchSelector: React.FC<CitySearchSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<City[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [filteredTopCities, setFilteredTopCities] = useState<City[]>(topCities);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Debounce search term for API calls (300ms delay)
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Update search term when value changes externally
   useEffect(() => {
     setSearchTerm(value);
   }, [value]);
 
-  // Update filtered top cities when topCities change
-  useEffect(() => {
-    setFilteredTopCities(topCities);
-  }, [topCities]);
-
-  // Handle search with debounce
-  useEffect(() => {
+  // Memoized local filtering (instant, no API call)
+  const filteredTopCities = useMemo(() => {
     if (!searchTerm || searchTerm.length < 2) {
-      setFilteredTopCities(topCities);
+      return topCities;
+    }
+    
+    const searchLower = searchTerm.toLowerCase();
+    return topCities.filter(city =>
+      city.name.toLowerCase().includes(searchLower)
+    );
+  }, [searchTerm, topCities]);
+
+  // Handle API search with debounced term (only when needed)
+  useEffect(() => {
+    // Don't search if term is too short
+    if (!debouncedSearchTerm || debouncedSearchTerm.length < 2) {
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
-    // Filter top cities locally first (instant)
-    const localFiltered = topCities.filter(city =>
-      city.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredTopCities(localFiltered);
-
-    // If not found in top cities, search GeoNames
-    if (localFiltered.length === 0) {
-      const debounceTimer = setTimeout(async () => {
-        setIsSearching(true);
-        try {
-          const results = await searchCitiesByName(countryCode, searchTerm);
-          setSearchResults(results);
-        } catch (error) {
-          console.error('City search failed:', error);
-          setSearchResults([]);
-        } finally {
-          setIsSearching(false);
-        }
-      }, 500); // 500ms debounce
-
-      return () => clearTimeout(debounceTimer);
-    } else {
+    // Don't search if we found results in top cities
+    if (filteredTopCities.length > 0) {
       setSearchResults([]);
+      setIsSearching(false);
+      return;
     }
-  }, [searchTerm, topCities, countryCode]);
+
+    // Search GeoNames API only if no local results
+    const searchAPI = async () => {
+      setIsSearching(true);
+      try {
+        const results = await searchCitiesByName(countryCode, debouncedSearchTerm);
+        setSearchResults(results);
+      } catch (error) {
+        logger.error('City search failed:', error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    searchAPI();
+  }, [debouncedSearchTerm, filteredTopCities.length, countryCode]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

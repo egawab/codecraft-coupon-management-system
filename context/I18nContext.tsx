@@ -1,5 +1,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { logger } from '../utils/logger';
 import { translations, type Language, type Translations } from '../locales/index';
+import { logger } from '../utils/logger';
 
 interface I18nContextType {
   language: Language;
@@ -31,7 +33,7 @@ export const I18nProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const data = translations[language] || translations.en;
             setCurrentTranslations(data);
         } catch (error) {
-            console.error("Failed to load translations:", error);
+            logger.error("Failed to load translations:", error);
             // Fallback to English
             setCurrentTranslations(translations.en);
         } finally {

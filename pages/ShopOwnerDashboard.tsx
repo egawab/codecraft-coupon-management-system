@@ -6,12 +6,17 @@ import { api } from '../services/api';
 import { Coupon, Referral, CreateCouponData, CreditRequest, CreditKey } from '../types';
 import { sanitizeCouponData, validateCouponData, prepareCouponData } from '../utils/couponDataSanitizer';
 import { useAuth } from '../hooks/useAuth';
+import { logger } from '../utils/logger';
 import StatCard from '../components/StatCard';
 import { TicketIcon, GiftIcon, BanknotesIcon, EyeIcon, CreditCardIcon, KeyIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from '../hooks/useTranslation';
 import CouponCard from '../components/CouponCard';
 import QRCodeModal from '../components/QRCodeModal';
 import LocationSelector from '../components/LocationSelector';
+import { useSafeAsync } from '../hooks/useSafeAsync';
+import { CouponErrorHandler, DataErrorHandler } from '../utils/errorHandler';
+import { validateForm, couponValidationRules } from '../utils/validation';
+import { LoadingState, CardSkeleton, EmptyState } from '../components/LoadingState';
 
 const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponCreated }) => {
     const { user } = useAuth();
@@ -44,7 +49,24 @@ const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponC
         setError('');
         
         try {
-            // Prepare coupon data with proper sanitization - this prevents undefined values
+            // Client-side validation first
+            const formData = {
+                title: title.trim(),
+                description: description.trim(),
+                maxUses,
+                discountValue,
+                affiliateCommission,
+                customerRewardPoints,
+                ...(validityType === 'days' ? { validityDays } : { expiryDate })
+            };
+
+            const clientValidation = validateForm(formData, couponValidationRules);
+            if (!clientValidation.isValid) {
+                const firstError = Object.values(clientValidation.errors)[0];
+                throw new Error(firstError);
+            }
+
+            // Prepare coupon data with proper sanitization
             const rawCouponData: Partial<CreateCouponData> = {
                 shopOwnerId: user.id,
                 title: title.trim(),
@@ -57,14 +79,13 @@ const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponC
                 validityDays: validityType === 'days' ? validityDays : undefined,
                 affiliateCommission,
                 customerRewardPoints,
-                // Location data
                 countries: isGlobal ? [] : countries,
                 cities: isGlobal ? [] : cities,
                 areas: isGlobal ? [] : areas,
                 isGlobal: isGlobal
             };
 
-            // Validate and sanitize the data to ensure no undefined fields
+            // Server-side validation
             const validation = validateCouponData(rawCouponData as CreateCouponData);
             if (!validation.isValid) {
                 throw new Error(validation.errors.join(', '));
@@ -72,6 +93,11 @@ const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponC
 
             const newCouponData = prepareCouponData(rawCouponData);
             await api.createCoupon(newCouponData, user);
+            
+            // SUCCESS - Show success message
+            logger.debug('✅ Coupon created successfully! Refreshing data...');
+            
+            // Call the refresh callback
             onCouponCreated();
             
             // Reset form
@@ -82,8 +108,12 @@ const CreateCouponForm: React.FC<{ onCouponCreated: () => void }> = ({ onCouponC
             setAreas([]);
             setIsGlobal(true);
             
+            // Show success feedback
+            alert('✅ Coupon created successfully! It should appear in your list shortly.');
+            
         } catch (err: any) {
-            setError(err.message);
+            const errorMessage = CouponErrorHandler.create(err, user?.id);
+            setError(errorMessage);
         } finally {
             setIsSubmitting(false);
         }
@@ -210,7 +240,7 @@ const ReferralSection: React.FC = () => {
     return (
          <div className="bg-white p-6 rounded-xl shadow-lg border animate-slideInUp">
             <h3 className="text-xl font-semibold text-dark-gray mb-4">{t('shopOwner.referral.title')}</h3>
-            <p className="text-sm text-gray-600 mb-4" dangerouslySetInnerHTML={{ __html: t('shopOwner.referral.description') }} />
+            <p className="text-sm text-gray-600 mb-4">{t('shopOwner.referral.description')}</p>
             <div className="flex">
                 <input type="text" readOnly value={referralLink} className="text-sm w-full bg-gray-100 form-input read-only:bg-gray-100 rounded-r-none focus:ring-0"/>
                 <button onClick={handleCopy} className="bg-primary text-white font-semibold px-4 rounded-r-lg text-sm hover:opacity-90 min-w-[80px] transition-all transform hover:scale-105">
@@ -224,6 +254,7 @@ const ReferralSection: React.FC = () => {
 const ShopOwnerDashboard: React.FC = () => {
     const { user, refreshUser } = useAuth();
     const { t } = useTranslation();
+    const safeAsync = useSafeAsync();
     
     // CRITICAL FIX: Disable real-time tracking for shop owners to prevent Firestore errors
     // Shop owners don't need real-time tracking - it causes "FIRESTORE INTERNAL ASSERTION FAILED"
@@ -242,6 +273,7 @@ const ShopOwnerDashboard: React.FC = () => {
     const [couponRedemptions, setCouponRedemptions] = useState<any[]>([]);
     const [affiliateActivity, setAffiliateActivity] = useState<any[]>([]);
     const [customerData, setCustomerData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
     
     // Real-time customer data integration
     useEffect(() => {
@@ -251,7 +283,7 @@ const ShopOwnerDashboard: React.FC = () => {
                 customer => customer.shopOwnerId === user?.id
             );
             setCustomerData(shopCustomerData);
-            console.log(`🔴 LIVE: Shop owner received ${shopCustomerData.length} customer interactions`);
+            logger.debug('Shop owner received customer interactions', { count: shopCustomerData.length });
         }
     }, [trackingData?.customerData, user?.id]);
     const [activeTab, setActiveTab] = useState<'overview' | 'redemptions' | 'affiliates' | 'customers'>('overview');
@@ -269,40 +301,60 @@ const ShopOwnerDashboard: React.FC = () => {
     const [keyActivationMessage, setKeyActivationMessage] = useState('');
 
     const fetchData = useCallback(async () => {
-        if (user) {
-            const [shopCoupons, shopReferrals, shopCreditRequests, shopCreditKeys, redemptions, affiliates, customers] = await Promise.all([
-                api.getCouponsForShop(user.id),
-                api.getReferralsForShop(user.id),
-                api.getCreditRequestsForShop(user.id),
-                api.getCreditKeysForShop(user.id),
-                // NEW: Get detailed redemption data for this shop's coupons
-                api.getRedemptionsForShop(user.id),
-                // NEW: Get all affiliates who promoted this shop's coupons
-                api.getAffiliatesForShop(user.id),
-                // NEW: Get all customer data from redemptions
-                api.getCustomerDataForShop(user.id)
-            ]);
-            setCoupons(shopCoupons);
-            setReferrals(shopReferrals);
-            setCreditRequests(shopCreditRequests);
-            setCouponRedemptions(redemptions);
-            setAffiliateActivity(affiliates);
-            setCustomerData(customers);
-            
-            // DEBUG: Log what we're actually getting
-            console.log('🔍 Shop Owner Dashboard Data for shop:', user.id);
-            console.log('- Coupons:', shopCoupons.length);
-            console.log('- Redemptions:', redemptions.length);
-            console.log('- Customer Data:', customers.length);
-            if (customers.length > 0) {
-                console.log('- Customer Data Sample:', customers.slice(0, 2));
-            } else {
-                console.log('- No customer data found - check if customers are redeeming coupons with data collection enabled');
-            }
-            // Filter to show only unused keys
-            setAvailableKeys(shopCreditKeys.filter(key => !key.isUsed && new Date(key.expiresAt) > new Date()));
+        if (!user) {
+            logger.warn('⚠️ fetchData called but no user found');
+            return;
         }
-    }, [user]);
+        
+        logger.debug(`🔄 fetchData called for user: ${user.id}`);
+        setLoading(true);
+        await safeAsync(async () => {
+            try {
+                logger.debug('📡 Fetching all shop owner data...');
+                const [shopCoupons, shopReferrals, shopCreditRequests, shopCreditKeys, redemptions, affiliates, customers] = await Promise.all([
+                    api.getCouponsForShop(user.id),
+                    api.getReferralsForShop(user.id),
+                    api.getCreditRequestsForShop(user.id),
+                    api.getCreditKeysForShop(user.id),
+                    api.getRedemptionsForShop(user.id),
+                    api.getAffiliatesForShop(user.id),
+                    api.getCustomerDataForShop(user.id)
+                ]);
+                
+                logger.debug(`✅ Data fetched successfully:`, {
+                    coupons: shopCoupons.length,
+                    referrals: shopReferrals.length,
+                    redemptions: redemptions.length,
+                    customers: customers.length
+                });
+                
+                // Update all state with new data
+                setCoupons(shopCoupons);
+                setReferrals(shopReferrals);
+                setCreditRequests(shopCreditRequests);
+                setCouponRedemptions(redemptions);
+                setAffiliateActivity(affiliates);
+                setCustomerData(customers);
+                
+                // Filter to show only unused keys
+                setAvailableKeys(shopCreditKeys.filter(key => !key.isUsed && new Date(key.expiresAt) > new Date()));
+                
+                logger.debug('✅ Shop Owner Dashboard Data loaded and state updated', {
+                    couponsInState: shopCoupons.length,
+                    redemptions: redemptions.length,
+                    customers: customers.length
+                });
+                
+                // Force component re-render by updating loading state
+                setLoading(false);
+            } catch (error) {
+                logger.error('❌ Error fetching shop owner data:', error);
+                DataErrorHandler.fetch(error, 'shop-owner-dashboard');
+            } finally {
+                setLoading(false);
+            }
+        });
+    }, [user, safeAsync]);
 
     const handleSubmitCreditRequest = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -349,6 +401,10 @@ const ShopOwnerDashboard: React.FC = () => {
     }, [fetchData]);
     
     if (!user) return null;
+    
+    if (loading) {
+        return <LoadingState message="Loading your dashboard..." />;
+    }
     
     const referralCreditsEarned = referrals.filter(r => r.status === 'rewarded').length * 10000;
     const totalCouponViews = coupons.reduce((sum, coupon) => sum + (coupon.clicks || 0), 0);
@@ -775,19 +831,7 @@ const ShopOwnerDashboard: React.FC = () => {
                                     >
                                         🔄 Refresh Data
                                     </button>
-                                    <button
-                                        onClick={() => {
-                                            console.log('🔍 Manual Debug - Shop ID:', user.id);
-                                            console.log('🔍 Manual Debug - Current Customer Data:', customerData);
-                                            console.log('🔍 Manual Debug - Current Redemptions:', couponRedemptions);
-                                            api.getCustomerDataForShop(user.id).then(data => {
-                                                console.log('🔍 Manual Debug - Fresh Customer Data:', data);
-                                            });
-                                        }}
-                                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all font-medium flex items-center gap-2"
-                                    >
-                                        🔧 Debug
-                                    </button>
+                                    {/* Debug button removed for production */}
                                 </div>
                             </div>
                         </div>
@@ -905,11 +949,7 @@ const ShopOwnerDashboard: React.FC = () => {
                                                 💡 Create and share coupons to start collecting customer data!
                                             </p>
                                         </div>
-                                        <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
-                                            <p className="text-gray-600 text-xs">
-                                                Debug: Redemptions={couponRedemptions.length} | Customer Records={customerData.length}
-                                            </p>
-                                        </div>
+                                        {/* Debug info removed for production */}
                                     </div>
                                 </div>
                             )}

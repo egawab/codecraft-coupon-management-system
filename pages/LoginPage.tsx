@@ -7,6 +7,7 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { LogoIcon } from '../components/icons/LogoIcon';
 import { useTranslation } from '../hooks/useTranslation';
 import GlobalLocationSelector from '../components/GlobalLocationSelector';
+import { AuthErrorHandler } from '../utils/errorHandler';
 
 const LoginPage: React.FC = () => {
   const { t } = useTranslation();
@@ -77,7 +78,10 @@ const LoginPage: React.FC = () => {
       }
       navigate(from || '/dashboard', { replace: !!from });
     } catch (err: any) {
-       setError(err.message || 'An error occurred. Please try again.');
+       const errorMessage = isLoginMode 
+         ? AuthErrorHandler.login(err)
+         : AuthErrorHandler.signup(err);
+       setError(errorMessage);
     } finally {
         setLoading(false);
     }
@@ -130,7 +134,7 @@ const LoginPage: React.FC = () => {
         {referredBy && !isLoginMode && (
           <div className="bg-green-100 border-l-4 border-success text-green-700 p-4 mb-6 rounded-r-lg animate-fadeIn">
             <p className="font-bold">{t('loginPage.referredWelcome')}</p>
-            <p dangerouslySetInnerHTML={{ __html: t('loginPage.referredMessage')}} />
+            <p className="text-sm">{t('loginPage.referredMessage')}</p>
           </div>
         )}
         <h2 className="text-2xl font-bold text-center text-dark-gray mb-2">

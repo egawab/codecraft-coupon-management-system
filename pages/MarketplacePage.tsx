@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { logger } from '../utils/logger';
 import { api } from '../services/api';
 import { Shop, Coupon } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
@@ -65,7 +66,7 @@ const MarketplacePage: React.FC = () => {
                 setShops(publicShops);
                 setFilteredShops(publicShops);
             } catch (error) {
-                console.error('Failed to fetch shops:', error);
+                logger.error('Failed to fetch shops:', error);
             } finally {
                 setLoading(false);
             }
@@ -140,7 +141,7 @@ const MarketplacePage: React.FC = () => {
             );
             setShopCoupons(activeCoupons);
         } catch (error) {
-            console.error('Failed to fetch shop coupons:', error);
+            logger.error('Failed to fetch shop coupons:', error);
             setShopCoupons([]);
         } finally {
             setShopLoading(false);
@@ -193,7 +194,7 @@ const MarketplacePage: React.FC = () => {
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-3">
                                     <BuildingStorefrontIcon className="h-8 w-8 text-brand-primary" />
-                                    <h1 className="text-4xl font-bold gradient-text">{selectedShop.name}</h1>
+                                    <h1 className="text-4xl font-bold marketplace-shop-name">{selectedShop.name}</h1>
                                 </div>
                                 
                                 <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
@@ -331,7 +332,7 @@ const MarketplacePage: React.FC = () => {
                                             style={{ animationDelay: `${index * 0.1}s` }}
                                         >
                                             <div className="flex justify-between items-start mb-4">
-                                                <h3 className="text-xl font-bold text-gray-800 flex-1 mr-4">{coupon.title}</h3>
+                                                <h3 className="text-xl font-bold text-gray-800 flex-1 mr-4 line-clamp-2">{coupon.title}</h3>
                                                 <div className="text-right">
                                                     <div className="text-3xl font-bold gradient-text-2">
                                                         {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `$${coupon.discountValue}`}
@@ -383,7 +384,7 @@ const MarketplacePage: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-100 animate-fadeIn">
+        <div className="marketplace-container min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-100 animate-fadeIn">
             {/* Marketplace Header */}
             <div className="bg-white shadow-soft border-b">
                 <div className="max-w-7xl mx-auto px-4 py-12">
@@ -473,20 +474,20 @@ const MarketplacePage: React.FC = () => {
                 </div>
 
                 {/* Shop Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="marketplace-grid">
                     {filteredShops.map((shop, index) => (
                         <div 
                             key={shop.id} 
-                            className="glass-panel p-6 card-hover cursor-pointer group animate-slideInUp"
+                            className="marketplace-shop-card cursor-pointer group animate-slideInUp"
                             onClick={() => handleShopClick(shop)}
                             style={{ animationDelay: `${index * 0.1}s` }}
                         >
                             <div className="flex justify-between items-start mb-4">
-                                <h3 className="text-xl font-bold text-gray-800 group-hover:gradient-text transition-all duration-300 flex-1 mr-4">
+                                <h3 className="marketplace-shop-title text-xl font-bold text-gray-800 flex-1 mr-4">
                                     {shop.name}
                                 </h3>
                                 {shop.category && (
-                                    <span className="badge-calm text-xs shrink-0">
+                                    <span className="marketplace-category-pill text-xs shrink-0">
                                         {shop.category}
                                     </span>
                                 )}
@@ -517,11 +518,9 @@ const MarketplacePage: React.FC = () => {
                                 )}
                             </div>
 
-                            <button className="btn-calm w-full group-hover:shadow-glow transition-all duration-300">
-                                <span className="flex items-center justify-center gap-2">
-                                    <BuildingStorefrontIcon className="h-5 w-5" />
-                                    Explore Shop & Deals
-                                </span>
+                            <button className="marketplace-view-btn w-full">
+                                <BuildingStorefrontIcon className="h-5 w-5" />
+                                Explore Shop & Deals
                             </button>
                         </div>
                     ))}

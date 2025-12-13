@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { Coupon } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
 import { CalendarDaysIcon, CheckBadgeIcon, EyeIcon, SparklesIcon, MapPinIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
@@ -10,7 +10,7 @@ interface CouponCardProps {
     showAffiliateCommission?: boolean;
 }
 
-const CouponCard: React.FC<CouponCardProps> = ({ coupon, children, showAffiliateCommission = false }) => {
+const CouponCard: React.FC<CouponCardProps> = memo(({ coupon, children, showAffiliateCommission = false }) => {
     const { t } = useTranslation();
 
     const getDiscountText = () => {
@@ -32,32 +32,38 @@ const CouponCard: React.FC<CouponCardProps> = ({ coupon, children, showAffiliate
         return t('couponCard.noExpiry');
     };
 
-    const isExpired = () => {
-        if (coupon.usesLeft <= 0) return true;
-        if (coupon.validityType === 'expiryDate' && coupon.expiryDate) {
-            return new Date(coupon.expiryDate) < new Date();
-        }
-        if (coupon.validityType === 'days' && coupon.validityDays) {
-            const expiry = new Date(new Date(coupon.createdAt).getTime() + coupon.validityDays * 24 * 60 * 60 * 1000);
-            return expiry < new Date();
-        }
-        return false;
-    };
-    
-    const expired = isExpired();
-    const status = expired ? t('couponCard.status.inactive') : t('couponCard.status.active');
-    const statusColor = expired ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
+    // Memoize expensive calculations
+    const { expired, status, statusColor } = useMemo(() => {
+        const isExpired = () => {
+            if (coupon.usesLeft <= 0) return true;
+            if (coupon.validityType === 'expiryDate' && coupon.expiryDate) {
+                return new Date(coupon.expiryDate) < new Date();
+            }
+            if (coupon.validityType === 'days' && coupon.validityDays) {
+                const expiry = new Date(new Date(coupon.createdAt).getTime() + coupon.validityDays * 24 * 60 * 60 * 1000);
+                return expiry < new Date();
+            }
+            return false;
+        };
+        
+        const expired = isExpired();
+        return {
+            expired,
+            status: expired ? t('couponCard.status.inactive') : t('couponCard.status.active'),
+            statusColor: expired ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+        };
+    }, [coupon.usesLeft, coupon.validityType, coupon.expiryDate, coupon.validityDays, coupon.createdAt, t]);
 
     return (
         <div className={`enhanced-card card-lift p-5 flex flex-col justify-between ${expired ? 'opacity-60' : ''} bounce-in`}>
             <div>
-                <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-bold text-gray-800 pr-2">{coupon.title}</h3>
-                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${statusColor} whitespace-nowrap`}>{status}</span>
+                <div className="flex justify-between items-start mb-2 gap-2">
+                    <h3 className="text-xl font-bold text-gray-800 flex-1 line-clamp-2 break-all">{coupon.title}</h3>
+                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${statusColor} whitespace-nowrap flex-shrink-0`}>{status}</span>
                 </div>
-                <p className="text-sm text-gray-500 mb-4">by {coupon.shopOwnerName}</p>
+                <p className="text-sm text-gray-500 mb-4 break-all line-clamp-1">by {coupon.shopOwnerName}</p>
                 
-                <p className="text-sm text-gray-600 mb-4 min-h-[40px]">{coupon.description}</p>
+                <p className="text-sm text-gray-600 mb-4 min-h-[40px] line-clamp-2 break-all">{coupon.description}</p>
                 
                 <div className="bg-gradient-to-r from-primary/10 to-blue-500/10 p-4 rounded-lg text-center mb-4">
                      <p className="text-3xl font-extrabold text-primary">{getDiscountText()}</p>
@@ -130,6 +136,8 @@ const CouponCard: React.FC<CouponCardProps> = ({ coupon, children, showAffiliate
             {children && !expired && <div className="mt-6 pt-4 border-t border-gray-200">{children}</div>}
         </div>
     );
-};
+});
+
+CouponCard.displayName = 'CouponCard';
 
 export default CouponCard;

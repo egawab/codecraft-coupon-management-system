@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { logger } from '../utils/logger';
 import { api } from '../services/api';
+import { logger } from '../utils/logger';
 import { Coupon, Redemption } from '../types';
+import { logger } from '../utils/logger';
 import { useAuth } from '../hooks/useAuth';
+import { logger } from '../utils/logger';
 import { useTranslation } from '../hooks/useTranslation';
+import { logger } from '../utils/logger';
 import StatCard from '../components/StatCard';
+import { logger } from '../utils/logger';
 import CouponCard from '../components/CouponCard';
+import { logger } from '../utils/logger';
 import QRCodeModal from '../components/QRCodeModal';
+import { logger } from '../utils/logger';
 import { 
     CurrencyDollarIcon, 
     ChartBarIcon, 
@@ -34,7 +42,7 @@ const MarketerDashboard: React.FC = () => {
                 setCoupons(allCoupons);
                 setRedemptions(affiliateRedemptions);
             } catch (error) {
-                console.error('Failed to fetch marketer data:', error);
+                logger.error('Failed to fetch marketer data:', error);
             } finally {
                 setLoading(false);
             }

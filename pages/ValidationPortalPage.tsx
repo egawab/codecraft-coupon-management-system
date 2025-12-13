@@ -1,10 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
+import { logger } from '../utils/logger';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { logger } from '../utils/logger';
 import { api } from '../services/api';
+import { logger } from '../utils/logger';
 import { Coupon } from '../types';
+import { logger } from '../utils/logger';
 import { useAuth } from '../hooks/useAuth';
+import { logger } from '../utils/logger';
 import { useTranslation } from '../hooks/useTranslation';
+import { logger } from '../utils/logger';
 
 const ValidationPortalPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -130,23 +136,23 @@ const ValidationPortalPage: React.FC = () => {
         };
         
         // Call the secure API endpoint which triggers the Cloud Function
-        console.log('🚀 Submitting redemption with customer data:', customerData);
-        console.log('🎯 Target shop ID:', coupon?.shopOwnerId);
+        logger.debug('🚀 Submitting redemption with customer data:', customerData);
+        logger.debug('🎯 Target shop ID:', coupon?.shopOwnerId);
         
         const result = await api.redeemCouponWithCustomerData(id, affiliateId, user.id, customerData);
-        console.log('📊 Redemption result:', result);
+        logger.debug('📊 Redemption result:', result);
         
         setRedeemMessage(result.message);
 
         if(result.success) {
-            console.log('✅ Redemption successful, sending notifications...');
+            logger.debug('✅ Redemption successful, sending notifications...');
             
             // Send customer data to admin and shop owner via email/notification
             try {
                 await api.notifyAdminAndShopOwner(customerData);
-                console.log('✅ Notifications sent successfully');
+                logger.debug('✅ Notifications sent successfully');
             } catch (notifyError) {
-                console.error('⚠️ Notification failed but redemption was successful:', notifyError);
+                logger.error('⚠️ Notification failed but redemption was successful:', notifyError);
             }
             
             // Add success feedback
@@ -154,11 +160,11 @@ const ValidationPortalPage: React.FC = () => {
             
             // Delay navigation to show success message
             setTimeout(() => {
-                console.log('🏠 Navigating to dashboard...');
+                logger.debug('🏠 Navigating to dashboard...');
                 navigate('/dashboard');
             }, 3000);
         } else {
-            console.error('❌ Redemption failed:', result.message);
+            logger.error('❌ Redemption failed:', result.message);
         }
         setIsRedeeming(false);
         setIsSubmittingData(false);

@@ -73,11 +73,11 @@ const PRIORITY_CITIES = {
  * Seed all countries (fast - just one API call)
  */
 export async function seedCountries(onProgress?: (progress: SeedProgress) => void): Promise<void> {
-  console.log('🌍 Seeding countries...');
+  logger.debug('🌍 Seeding countries...');
   
   try {
     const countries = await getAllCountries();
-    console.log(`✅ Cached ${countries.length} countries`);
+    logger.debug(`✅ Cached ${countries.length} countries`);
     
     if (onProgress) {
       onProgress({
@@ -88,7 +88,7 @@ export async function seedCountries(onProgress?: (progress: SeedProgress) => voi
       });
     }
   } catch (error) {
-    console.error('❌ Failed to seed countries:', error);
+    logger.error('❌ Failed to seed countries:', error);
     throw error;
   }
 }
@@ -100,7 +100,7 @@ export async function seedCountries(onProgress?: (progress: SeedProgress) => voi
 export async function seedPriorityCities(
   onProgress?: (progress: SeedProgress) => void
 ): Promise<void> {
-  console.log('🏙️ Seeding priority cities...');
+  logger.debug('🏙️ Seeding priority cities...');
   
   const progress: SeedProgress = {
     total: PRIORITY_COUNTRIES.length,
@@ -115,11 +115,11 @@ export async function seedPriorityCities(
     
     try {
       const cities = await getAllCitiesForCountry(countryCode);
-      console.log(`✅ Cached ${cities.length} cities for ${countryCode}`);
+      logger.debug(`✅ Cached ${cities.length} cities for ${countryCode}`);
       progress.completed++;
     } catch (error) {
       const errorMsg = `Failed to cache cities for ${countryCode}`;
-      console.error(`❌ ${errorMsg}:`, error);
+      logger.error(`❌ ${errorMsg}:`, error);
       progress.errors.push(errorMsg);
       progress.completed++;
     }
@@ -130,9 +130,9 @@ export async function seedPriorityCities(
     await new Promise(resolve => setTimeout(resolve, 5000));
   }
   
-  console.log(`✅ Completed seeding ${progress.completed} countries`);
+  logger.debug(`✅ Completed seeding ${progress.completed} countries`);
   if (progress.errors.length > 0) {
-    console.warn(`⚠️ ${progress.errors.length} errors occurred:`, progress.errors);
+    logger.warn(`⚠️ ${progress.errors.length} errors occurred:`, progress.errors);
   }
 }
 
@@ -143,7 +143,7 @@ export async function seedPriorityCities(
 export async function seedPriorityDistricts(
   onProgress?: (progress: SeedProgress) => void
 ): Promise<void> {
-  console.log('🏘️ Seeding priority districts...');
+  logger.debug('🏘️ Seeding priority districts...');
   
   const totalCities = Object.values(PRIORITY_CITIES).flat().length;
   const progress: SeedProgress = {
@@ -160,11 +160,11 @@ export async function seedPriorityDistricts(
       
       try {
         const districts = await getAllDistrictsForCity(cityName, countryCode);
-        console.log(`✅ Cached ${districts.length} districts for ${cityName}`);
+        logger.debug(`✅ Cached ${districts.length} districts for ${cityName}`);
         progress.completed++;
       } catch (error) {
         const errorMsg = `Failed to cache districts for ${cityName}`;
-        console.error(`❌ ${errorMsg}:`, error);
+        logger.error(`❌ ${errorMsg}:`, error);
         progress.errors.push(errorMsg);
         progress.completed++;
       }
@@ -176,9 +176,9 @@ export async function seedPriorityDistricts(
     }
   }
   
-  console.log(`✅ Completed seeding districts for ${progress.completed} cities`);
+  logger.debug(`✅ Completed seeding districts for ${progress.completed} cities`);
   if (progress.errors.length > 0) {
-    console.warn(`⚠️ ${progress.errors.length} errors occurred:`, progress.errors);
+    logger.warn(`⚠️ ${progress.errors.length} errors occurred:`, progress.errors);
   }
 }
 
@@ -190,37 +190,37 @@ export async function seedPriorityDistricts(
 export async function seedAll(
   onProgress?: (progress: SeedProgress) => void
 ): Promise<void> {
-  console.log('🚀 Starting full location cache seeding...');
-  console.log('⏰ This will take 2-4 hours due to API rate limits');
-  console.log('💡 You can close this and it will continue in the background');
+  logger.debug('🚀 Starting full location cache seeding...');
+  logger.debug('⏰ This will take 2-4 hours due to API rate limits');
+  logger.debug('💡 You can close this and it will continue in the background');
   
   const startTime = Date.now();
   
   try {
     // Step 1: Seed countries (fast)
-    console.log('\n📍 Step 1/3: Seeding countries...');
+    logger.debug('\n📍 Step 1/3: Seeding countries...');
     await seedCountries(onProgress);
     
     // Step 2: Seed priority cities (slow - 25 countries × ~30 seconds each = ~12 minutes)
-    console.log('\n📍 Step 2/3: Seeding priority cities...');
+    logger.debug('\n📍 Step 2/3: Seeding priority cities...');
     await seedPriorityCities(onProgress);
     
     // Step 3: Seed priority districts (very slow - 50 cities × ~10 seconds each = ~8 minutes)
-    console.log('\n📍 Step 3/3: Seeding priority districts...');
+    logger.debug('\n📍 Step 3/3: Seeding priority districts...');
     await seedPriorityDistricts(onProgress);
     
     const duration = Math.round((Date.now() - startTime) / 1000 / 60);
-    console.log(`\n✅ Seeding completed in ${duration} minutes!`);
+    logger.debug(`\n✅ Seeding completed in ${duration} minutes!`);
     
     // Show cache statistics
     const stats = await getLocationStats();
-    console.log('\n📊 Cache Statistics:');
-    console.log(`   Countries: ${stats.totalCountries} (${stats.cachedCountries} cached)`);
-    console.log(`   Cities: ${stats.cachedCities} countries cached`);
-    console.log(`   Districts: ${stats.cachedDistricts} cities cached`);
+    logger.debug('\n📊 Cache Statistics:');
+    logger.debug(`   Countries: ${stats.totalCountries} (${stats.cachedCountries} cached)`);
+    logger.debug(`   Cities: ${stats.cachedCities} countries cached`);
+    logger.debug(`   Districts: ${stats.cachedDistricts} cities cached`);
     
   } catch (error) {
-    console.error('❌ Seeding failed:', error);
+    logger.error('❌ Seeding failed:', error);
     throw error;
   }
 }

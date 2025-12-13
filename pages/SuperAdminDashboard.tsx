@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { Shop, AdminCreditLog, Coupon, Redemption, Referral, Role, CreditRequest, CreditKey } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { useRealTimeTracking } from '../hooks/useRealTimeTracking';
+import { logger } from '../utils/logger';
 import StatCard from '../components/StatCard';
 import {
     UserGroupIcon,
@@ -53,7 +54,7 @@ const SuperAdminDashboard: React.FC = () => {
     useEffect(() => {
         if (!trackingData) return;
         
-        console.log('🔴 SUPER ADMIN: Real-time data update received:', {
+        logger.debug('Real-time data update received', {
             redemptions: trackingData.redemptions?.length || 0,
             customerData: trackingData.customerData?.length || 0,
             systemActivity: trackingData.systemActivity?.length || 0
@@ -61,16 +62,16 @@ const SuperAdminDashboard: React.FC = () => {
         
         if (trackingData.redemptions && trackingData.redemptions.length > 0) {
             setRedemptions(trackingData.redemptions);
-            console.log('🔴 SUPER ADMIN: Updated redemptions with real-time data');
+            logger.debug('Updated redemptions with real-time data');
         }
         if (trackingData.customerData && trackingData.customerData.length > 0) {
             setAllCustomerData(trackingData.customerData);
-            console.log('🔴 SUPER ADMIN: Updated customer data with real-time data');
+            logger.debug('Updated customer data with real-time data');
         }
         
         // Auto-refresh intelligence data when real-time updates come in
         if (activeTab === 'intelligence' && trackingData && ((trackingData.redemptions && trackingData.redemptions.length > 0) || (trackingData.customerData && trackingData.customerData.length > 0))) {
-            console.log('🔴 SUPER ADMIN: Refreshing intelligence data due to real-time updates');
+            logger.debug('Refreshing intelligence data due to real-time updates');
             fetchIntelligenceData();
         }
     }, [trackingData, activeTab]);
@@ -85,15 +86,15 @@ const SuperAdminDashboard: React.FC = () => {
         
         try {
             setLoading(true);
-            console.log('🔍 SUPER ADMIN: Fetching comprehensive intelligence data with real-time integration...');
+            logger.info('Fetching comprehensive intelligence data with real-time integration');
             
             // Use the new comprehensive function
             const intelligenceData = await api.getFullIntelligenceData();
             setIntelligenceData(intelligenceData);
             
-            console.log('✅ SUPER ADMIN: Intelligence data loaded successfully');
+            logger.info('Intelligence data loaded successfully');
         } catch (error) {
-            console.error('❌ SUPER ADMIN: Error loading intelligence data:', error);
+            logger.error('Error loading intelligence data', error);
             setIntelligenceData({
                 error: 'Failed to load intelligence data. Retrying...',
                 lastUpdated: new Date().toISOString()
@@ -101,7 +102,7 @@ const SuperAdminDashboard: React.FC = () => {
             
             // Retry after 3 seconds
             setTimeout(() => {
-                console.log('🔄 SUPER ADMIN: Retrying intelligence data fetch...');
+                logger.info('Retrying intelligence data fetch');
                 fetchIntelligenceData();
             }, 3000);
         } finally {
@@ -133,7 +134,7 @@ const SuperAdminDashboard: React.FC = () => {
     // CRITICAL: Auto-load intelligence data immediately when tab is opened
     useEffect(() => {
         if (activeTab === 'intelligence') {
-            console.log('🎯 SUPER ADMIN: Intelligence tab opened - loading data immediately...');
+            logger.info('Intelligence tab opened - loading data immediately');
             fetchIntelligenceData();
         }
         // Track tab changes
@@ -145,14 +146,14 @@ const SuperAdminDashboard: React.FC = () => {
         let intervalId: NodeJS.Timeout;
         
         if (activeTab === 'intelligence') {
-            console.log('🔄 SUPER ADMIN: Setting up auto-refresh for intelligence data...');
+            logger.debug('Setting up auto-refresh for intelligence data');
             
             // Initial immediate load
             fetchIntelligenceData();
             
             // Auto-refresh every 5 minutes for optimal user experience
             intervalId = setInterval(() => {
-                console.log('🔄 SUPER ADMIN: Auto-refreshing intelligence data (5-minute interval)...');
+                logger.debug('Auto-refreshing intelligence data (5-minute interval)');
                 fetchIntelligenceData();
             }, 300000); // 5 minutes for comfortable reading
         }
@@ -160,7 +161,7 @@ const SuperAdminDashboard: React.FC = () => {
         return () => {
             if (intervalId) {
                 clearInterval(intervalId);
-                console.log('🔴 SUPER ADMIN: Intelligence auto-refresh stopped');
+                logger.debug('Intelligence auto-refresh stopped');
             }
         };
     }, [activeTab, fetchIntelligenceData]);
@@ -170,10 +171,10 @@ const SuperAdminDashboard: React.FC = () => {
         let cleanupRealTimeListeners: (() => void) | null = null;
         
         if (activeTab === 'intelligence') {
-            console.log('🔴 SUPER ADMIN: Setting up real-time intelligence listeners...');
+            logger.debug('Setting up real-time intelligence listeners');
             
             cleanupRealTimeListeners = api.setupRealTimeIntelligenceListeners((update) => {
-                console.log(`🔴 SUPER ADMIN: Real-time intelligence update received:`, update.type);
+                logger.debug('Real-time intelligence update received', { type: update.type });
                 
                 // Update local state based on real-time updates
                 switch (update.type) {
@@ -204,7 +205,7 @@ const SuperAdminDashboard: React.FC = () => {
                 
                 // Trigger intelligence data refresh after state updates
                 setTimeout(() => {
-                    console.log('🔄 SUPER ADMIN: Refreshing intelligence data due to real-time update...');
+                    logger.debug('Refreshing intelligence data due to real-time update');
                     fetchIntelligenceData();
                 }, 500);
             });
@@ -213,7 +214,7 @@ const SuperAdminDashboard: React.FC = () => {
         return () => {
             if (cleanupRealTimeListeners) {
                 cleanupRealTimeListeners();
-                console.log('🔴 SUPER ADMIN: Real-time intelligence listeners cleaned up');
+                logger.debug('Real-time intelligence listeners cleaned up');
             }
         };
     }, [activeTab, fetchIntelligenceData]);
@@ -239,7 +240,7 @@ const SuperAdminDashboard: React.FC = () => {
             setCreditRequests(allCreditRequests);
             setCreditKeys(allCreditKeys);
         } catch (error) {
-            console.error('Failed to fetch super admin data:', error);
+            logger.error('Failed to fetch super admin data', error);
         } finally {
             setLoading(false);
         }
@@ -365,7 +366,7 @@ const SuperAdminDashboard: React.FC = () => {
             
             await fetchAllData();
         } catch (error) {
-            console.error('Failed to generate key:', error);
+            logger.error('Failed to generate key', error);
         } finally {
             setActionLoading(false);
         }
@@ -391,7 +392,7 @@ const SuperAdminDashboard: React.FC = () => {
             await fetchAllData();
             setEditMode(false);
         } catch (error) {
-            console.error('Failed to update credits:', error);
+            logger.error('Failed to update credits', error);
         } finally {
             setActionLoading(false);
         }
@@ -404,7 +405,7 @@ const SuperAdminDashboard: React.FC = () => {
             await updateDoc(userRef, { roles: newRoles });
             await fetchAllData();
         } catch (error) {
-            console.error('Failed to update roles:', error);
+            logger.error('Failed to update roles', error);
         } finally {
             setActionLoading(false);
         }
@@ -421,7 +422,7 @@ const SuperAdminDashboard: React.FC = () => {
             await deleteDoc(userRef);
             await fetchAllData();
         } catch (error) {
-            console.error('Failed to delete user:', error);
+            logger.error('Failed to delete user', error);
         } finally {
             setActionLoading(false);
         }
@@ -436,7 +437,7 @@ const SuperAdminDashboard: React.FC = () => {
             await deleteDoc(couponRef);
             await fetchAllData();
         } catch (error) {
-            console.error('Failed to delete coupon:', error);
+            logger.error('Failed to delete coupon', error);
         } finally {
             setActionLoading(false);
         }

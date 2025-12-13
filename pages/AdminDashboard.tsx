@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { logger } from '../utils/logger';
 import { api } from '../services/api';
+import { logger } from '../utils/logger';
 import { Shop, AdminCreditLog, Coupon, Redemption, Referral, Role } from '../types';
+import { logger } from '../utils/logger';
 import { useAuth } from '../hooks/useAuth';
+import { logger } from '../utils/logger';
 import { useRealTimeTracking } from '../hooks/useRealTimeTracking';
+import { logger } from '../utils/logger';
 import StatCard from '../components/StatCard';
+import { logger } from '../utils/logger';
 import RealTimeActivityFeed from '../components/RealTimeActivityFeed';
+import { logger } from '../utils/logger';
 import {
     UserGroupIcon,
     BanknotesIcon,
@@ -17,11 +24,17 @@ import {
     SignalIcon
 } from '@heroicons/react/24/outline';
 import { useTranslation } from '../hooks/useTranslation';
+import { logger } from '../utils/logger';
 import Breadcrumb from '../components/Breadcrumb';
+import { logger } from '../utils/logger';
 import SimpleChart from '../components/SimpleChart';
+import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
+import { logger } from '../utils/logger';
 import EnhancedSearch from '../components/EnhancedSearch';
+import { logger } from '../utils/logger';
 import Tooltip, { HelpTooltip } from '../components/Tooltip';
+import { logger } from '../utils/logger';
 
 type AdminTab = 'overview' | 'shops' | 'affiliates' | 'coupons' | 'redemptions' | 'referrals' | 'intelligence' | 'settings';
 
@@ -87,12 +100,12 @@ const AdminDashboard: React.FC = () => {
         if (user?.roles.includes('admin') || user?.roles.includes('super-admin')) {
             setBusy(true);
             try {
-                console.log('🔍 ADMIN: Fetching intelligence data...');
+                logger.debug('🔍 ADMIN: Fetching intelligence data...');
                 const intelligenceResult = await api.getFullIntelligenceData();
                 setIntelligenceData(intelligenceResult);
-                console.log('✅ ADMIN: Intelligence data loaded successfully');
+                logger.debug('✅ ADMIN: Intelligence data loaded successfully');
             } catch (error) {
-                console.error('❌ ADMIN: Error loading intelligence data:', error);
+                logger.error('❌ ADMIN: Error loading intelligence data:', error);
                 setIntelligenceData({
                     error: 'Failed to load intelligence data. Retrying...',
                     lastUpdated: new Date().toISOString()
@@ -120,14 +133,14 @@ const AdminDashboard: React.FC = () => {
         if (activeTab === 'intelligence') {
             // Longer interval - 5 minutes for optimal user experience
             intervalId = setInterval(() => {
-                console.log('🔄 Auto-refreshing intelligence data (5-minute interval)...');
+                logger.debug('🔄 Auto-refreshing intelligence data (5-minute interval)...');
                 fetchIntelligenceData();
             }, 300000); // 5 minutes for comfortable reading
         }
         return () => {
             if (intervalId) {
                 clearInterval(intervalId);
-                console.log('🔴 Intelligence auto-refresh stopped');
+                logger.debug('🔴 Intelligence auto-refresh stopped');
             }
         };
     }, [activeTab, fetchIntelligenceData]);

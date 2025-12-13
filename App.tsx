@@ -1,36 +1,53 @@
 
-import React from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { Role } from './types';
+import { SUPER_ADMIN_EMAIL } from './config/constants';
+import { analytics } from './config/monitoring';
 
 import Header from './components/Header';
+import CookieBanner from './components/CookieBanner';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
+import { LoadingScreen } from './components/LoadingState';
+
+// Eagerly loaded pages (critical for initial load)
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
-import ShopOwnerDashboard from './pages/ShopOwnerDashboard';
-import AffiliateDashboard from './pages/AffiliateDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import UserDashboard from './pages/UserDashboard';
-import MarketerDashboard from './pages/MarketerDashboard';
-import SuperAdminDashboard from './pages/SuperAdminDashboard';
-import ValidationPortalPage from './pages/ValidationPortalPage';
-import NotFoundPage from './pages/NotFoundPage';
-import ReferralHandlerPage from './pages/ReferralHandlerPage';
-import MarketplacePage from './pages/MarketplacePage';
-import PartnerPage from './pages/PartnerPage';
-import AffiliateNetworkPage from './pages/AffiliateNetworkPage';
-import LegalPage from './pages/LegalPage';
-import CookieBanner from './components/CookieBanner';
-import ProfilePage from './pages/ProfilePage';
-import PublicCouponPage from './pages/PublicCouponPage';
-import LocationBrowser from './components/LocationBrowser';
-import LocationCouponsPage from './pages/LocationCouponsPage';
+
+// Lazy loaded pages (code splitting for better performance)
+const ShopOwnerDashboard = lazy(() => import('./pages/ShopOwnerDashboard'));
+const AffiliateDashboard = lazy(() => import('./pages/AffiliateDashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const UserDashboard = lazy(() => import('./pages/UserDashboard'));
+const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
+const ValidationPortalPage = lazy(() => import('./pages/ValidationPortalPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const ReferralHandlerPage = lazy(() => import('./pages/ReferralHandlerPage'));
+const MarketplacePage = lazy(() => import('./pages/MarketplacePage'));
+const PartnerPage = lazy(() => import('./pages/PartnerPage'));
+const AffiliateNetworkPage = lazy(() => import('./pages/AffiliateNetworkPage'));
+const LegalPage = lazy(() => import('./pages/LegalPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const PublicCouponPage = lazy(() => import('./pages/PublicCouponPage'));
+const LocationBrowser = lazy(() => import('./components/LocationBrowser'));
+const LocationCouponsPage = lazy(() => import('./pages/LocationCouponsPage'));
+
+// Analytics tracker component
+const AnalyticsTracker: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    analytics.pageView(location.pathname);
+  }, [location]);
+
+  return null;
+};
 
 const App: React.FC = () => {
   const { user, isSuperAdmin } = useAuth();
-  const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'admin@kobonz.site';
 
-  const isAdminUser = user?.roles.includes('admin') && user.email === ADMIN_EMAIL;
+  const isAdminUser = user?.roles.includes('admin') && user.email === SUPER_ADMIN_EMAIL;
 
   const DashboardRedirect: React.FC = () => {
     if (!user) return <Navigate to="/login" />;
@@ -81,10 +98,12 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
+      <AnalyticsTracker />
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-grow container mx-auto px-4 py-8">
-          <Routes>
+          <Suspense fallback={<LoadingScreen message="Loading page..." />}>
+            <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={user ? <DashboardRedirect /> : <LoginPage />} />
             <Route path="/refer/:shopId" element={<ReferralHandlerPage />} />
@@ -119,8 +138,10 @@ const App: React.FC = () => {
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </Suspense>
         </main>
         <CookieBanner />
+        <PWAInstallPrompt />
       </div>
     </HashRouter>
   );

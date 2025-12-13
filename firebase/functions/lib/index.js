@@ -5,6 +5,18 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
+// Simple logger for Firebase Functions
+const logger = {
+    error: (message, ...args) => {
+        console.error(`[ERROR] ${message}`, ...args);
+    },
+    info: (message, ...args) => {
+        console.log(`[INFO] ${message}`, ...args);
+    },
+    warn: (message, ...args) => {
+        console.warn(`[WARN] ${message}`, ...args);
+    }
+};
 // A callable function to securely track a coupon click
 exports.trackCouponClickCallable = functions.https.onCall(async (request) => {
     const { couponId } = request.data;
@@ -19,7 +31,7 @@ exports.trackCouponClickCallable = functions.https.onCall(async (request) => {
         return { success: true };
     }
     catch (error) {
-        console.error("Failed to track click for coupon:", couponId, error);
+        logger.error("Failed to track click for coupon:", couponId, error);
         // We don't throw an error back to the user to not break their view
         return { success: false };
     }
@@ -173,7 +185,7 @@ exports.redeemCouponCallable = functions.https.onCall(async (request) => {
         return { success: true, message: "Coupon redeemed successfully!" };
     }
     catch (error) {
-        console.error("Redemption failed:", error);
+        logger.error("Redemption failed:", error);
         if (error instanceof functions.https.HttpsError) {
             throw error;
         }

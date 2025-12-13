@@ -19,6 +19,7 @@
 
 import { db } from '../firebase';
 import { collection, doc, getDoc, setDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { logger } from '../utils/logger';
 
 // GeoNames API Configuration
 const GEONAMES_USERNAME = import.meta.env.VITE_GEONAMES_USERNAME || 'demo'; // MUST BE REPLACED
@@ -87,7 +88,7 @@ interface GeoNamesDistrict {
 
 interface CachedLocation {
   id: string;
-  data: any;
+  data: unknown;
   timestamp: number;
   expiresAt: number;
 }
@@ -121,7 +122,7 @@ async function fetchFromGeoNames<T>(endpoint: string, params: Record<string, str
     
     return data;
   } catch (error) {
-    console.error('GeoNames API request failed:', error);
+    logger.error('GeoNames API request failed:', error);
     throw error;
   }
 }
@@ -130,7 +131,7 @@ async function fetchFromGeoNames<T>(endpoint: string, params: Record<string, str
  * Get the proper localized name for a location
  * Prioritizes native script (Arabic, Chinese, etc.) over romanization
  */
-function getLocalizedName(location: any, countryCode: string): string {
+function getLocalizedName(location: unknown, countryCode: string): string {
   // If the location has alternate names, check for native script
   if (location.alternateNames && Array.isArray(location.alternateNames)) {
     // Arabic-speaking countries
@@ -138,7 +139,7 @@ function getLocalizedName(location: any, countryCode: string): string {
     
     if (arabicCountries.includes(countryCode)) {
       // Look for Arabic name (language code 'ar')
-      const arabicName = location.alternateNames.find((alt: any) => alt.lang === 'ar');
+      const arabicName = location.alternateNames.find((alt: unknown) => alt.lang === 'ar');
       if (arabicName && arabicName.name && isArabicScript(arabicName.name)) {
         return arabicName.name;
       }
@@ -177,7 +178,7 @@ async function getCachedData(cacheKey: string): Promise<any | null> {
       
       // Check if cache is still valid
       if (cached.expiresAt > Date.now()) {
-        console.log(`✅ Cache hit: ${cacheKey}`);
+        logger.debug(`✅ Cache hit: ${cacheKey}`);
         
         // Decompress if it was compressed
         if (cached.compressed && Array.isArray(cached.data)) {
@@ -186,11 +187,11 @@ async function getCachedData(cacheKey: string): Promise<any | null> {
         
         return cached.data;
       } else {
-        console.log(`⏰ Cache expired: ${cacheKey}`);
+        logger.debug(`⏰ Cache expired: ${cacheKey}`);
       }
     }
   } catch (error) {
-    console.error('Cache read error:', error);
+    logger.error('Cache read error:', error);
   }
   
   return null;
@@ -200,7 +201,7 @@ async function getCachedData(cacheKey: string): Promise<any | null> {
  * Compress city data to reduce size for Firestore
  * Firestore has 1MB document limit - we need to strip unnecessary data
  */
-function compressCityData(cities: GeoNamesCity[]): any[] {
+function compressCityData(cities: GeoNamesCity[]): unknown[] {
   return cities.map(city => ({
     // Only keep essential fields to reduce size
     id: city.geonameId,
@@ -216,7 +217,7 @@ function compressCityData(cities: GeoNamesCity[]): any[] {
 /**
  * Decompress city data back to full format
  */
-function decompressCityData(compressed: any[]): GeoNamesCity[] {
+function decompressCityData(compressed: unknown[]): GeoNamesCity[] {
   return compressed.map(city => ({
     geonameId: city.id,
     name: city.name,
@@ -232,7 +233,7 @@ function decompressCityData(compressed: any[]): GeoNamesCity[] {
 /**
  * Save data to Firestore cache with compression
  */
-async function setCachedData(cacheKey: string, data: any): Promise<void> {
+async function setCachedData(cacheKey: string, data: unknown): Promise<void> {
   try {
     const now = Date.now();
     
@@ -250,7 +251,7 @@ async function setCachedData(cacheKey: string, data: any): Promise<void> {
     const dataSize = new Blob([JSON.stringify(dataToCache)]).size;
     
     if (dataSize > 1000000) { // Still > 1MB after compression
-      console.warn(`⚠️ Data too large to cache (${dataSize} bytes), skipping cache for ${cacheKey}`);
+      logger.warn(`⚠️ Data too large to cache (${dataSize} bytes), skipping cache for ${cacheKey}`);
       return; // Don't cache if still too large
     }
     
@@ -262,9 +263,9 @@ async function setCachedData(cacheKey: string, data: any): Promise<void> {
       expiresAt: now + CACHE_DURATION_MS,
       updatedAt: serverTimestamp(),
     });
-    console.log(`💾 Cached: ${cacheKey} (${Math.round(dataSize / 1024)}KB${isCompressed ? ', compressed' : ''})`);
+    logger.debug(`💾 Cached: ${cacheKey} (${Math.round(dataSize / 1024)}KB${isCompressed ? ', compressed' : ''})`);
   } catch (error) {
-    console.error('Cache write error:', error);
+    logger.error('Cache write error:', error);
   }
 }
 
@@ -283,12 +284,12 @@ async function fetchWithCache<T>(
   }
   
   // Only fetch fresh data if not in cache
-  console.log(`🌐 Fetching from GeoNames: ${cacheKey}`);
+  logger.debug(`🌐 Fetching from GeoNames: ${cacheKey}`);
   const data = await fetcher();
   
   // Cache the result (in background, don't wait)
   setCachedData(cacheKey, data).catch(err => 
-    console.warn('Cache write failed:', err)
+    logger.warn('Cache write failed:', err)
   );
   
   return data;
@@ -368,7 +369,7 @@ export async function searchCitiesInCountry(
     
     return response.geonames || [];
   } catch (error) {
-    console.error('City search failed:', error);
+    logger.error('City search failed:', error);
     return [];
   }
 }
@@ -395,16 +396,16 @@ export async function getTopDistrictsForCity(
       if (cachedCities && Array.isArray(cachedCities)) {
         city = cachedCities.find((c: GeoNamesCity) => c.name === cityName);
         if (city) {
-          console.log(`✓ Using cached city data for ${cityName} - NO EXTRA API CALL`);
+          logger.debug(`✓ Using cached city data for ${cityName} - NO EXTRA API CALL`);
         }
       }
     } catch (error) {
-      console.log('Could not retrieve from city cache, will fetch from API');
+      logger.debug('Could not retrieve from city cache, will fetch from API');
     }
     
     // If not in cache, fetch from API (only when necessary)
     if (!city) {
-      console.log(`⚠️ City not in cache, making API call for ${cityName}...`);
+      logger.debug(`⚠️ City not in cache, making API call for ${cityName}...`);
       const cityResponse = await fetchFromGeoNames<{ geonames: GeoNamesCity[] }>(
         'searchJSON',
         {
@@ -416,7 +417,7 @@ export async function getTopDistrictsForCity(
       );
       
       if (!cityResponse.geonames || cityResponse.geonames.length === 0) {
-        console.warn(`City not found: ${cityName}, ${countryCode}`);
+        logger.warn(`City not found: ${cityName}, ${countryCode}`);
         return [];
       }
       
@@ -453,7 +454,7 @@ export async function getTopDistrictsForCity(
       
       // If PPLX returns nothing, try broader search with nearby
       if (districts.length === 0) {
-        console.log(`No PPLX districts found, trying nearby for ${cityName}...`);
+        logger.debug(`No PPLX districts found, trying nearby for ${cityName}...`);
         const nearbyResponse = await fetchFromGeoNames<{ geonames: GeoNamesDistrict[] }>(
           'findNearbyJSON',
           {
@@ -469,14 +470,14 @@ export async function getTopDistrictsForCity(
         
         // Filter to only districts/neighborhoods
         districts = districts.filter(d => {
-          const fcode = (d as any).fcode;
+          const fcode = (d as unknown).fcode;
           return fcode === 'PPLX' || fcode === 'PPL' || fcode === 'ADM3' || fcode === 'ADM4';
         });
       }
       
-      console.log(`Found ${districts.length} districts for ${cityName}, ${countryCode}`);
+      logger.debug(`Found ${districts.length} districts for ${cityName}, ${countryCode}`);
     } catch (error) {
-      console.warn('District fetch failed:', error);
+      logger.warn('District fetch failed:', error);
       return [];
     }
     
@@ -492,7 +493,7 @@ export async function getTopDistrictsForCity(
         // Check alternateNames for Arabic version
         if (district.alternateNames && Array.isArray(district.alternateNames)) {
           const arabicName = district.alternateNames.find(
-            (alt: any) => alt.lang === 'ar' && isArabicScript(alt.name)
+            (alt: unknown) => alt.lang === 'ar' && isArabicScript(alt.name)
           );
           
           if (arabicName) {
@@ -569,7 +570,7 @@ export async function searchDistrictsInCity(
     
     return filtered;
   } catch (error) {
-    console.error('District search failed:', error);
+    logger.error('District search failed:', error);
     return [];
   }
 }
@@ -584,7 +585,7 @@ export async function searchLocations(searchTerm: string, maxResults: number = 5
   }
   
   try {
-    const response = await fetchFromGeoNames<{ geonames: any[] }>(
+    const response = await fetchFromGeoNames<{ geonames: unknown[] }>(
       'searchJSON',
       {
         q: searchTerm,
@@ -596,7 +597,7 @@ export async function searchLocations(searchTerm: string, maxResults: number = 5
     
     return response.geonames || [];
   } catch (error) {
-    console.error('Location search failed:', error);
+    logger.error('Location search failed:', error);
     return [];
   }
 }
@@ -608,14 +609,14 @@ export async function searchLocations(searchTerm: string, maxResults: number = 5
 export async function validateGeoNamesSetup(): Promise<boolean> {
   try {
     await fetchFromGeoNames('countryInfoJSON', { country: 'US' });
-    console.log('✅ GeoNames API connected successfully');
+    logger.debug('✅ GeoNames API connected successfully');
     return true;
   } catch (error) {
-    console.error('❌ GeoNames API setup failed:', error);
-    console.error('Please ensure:');
-    console.error('1. You have registered at http://www.geonames.org/login');
-    console.error('2. You have enabled Free Web Services in your account');
-    console.error('3. Your username is set in VITE_GEONAMES_USERNAME');
+    logger.error('❌ GeoNames API setup failed:', error);
+    logger.error('Please ensure:');
+    logger.error('1. You have registered at http://www.geonames.org/login');
+    logger.error('2. You have enabled Free Web Services in your account');
+    logger.error('3. Your username is set in VITE_GEONAMES_USERNAME');
     return false;
   }
 }
@@ -657,7 +658,7 @@ export async function getLocationStats(): Promise<{
     
     return stats;
   } catch (error) {
-    console.error('Failed to get location stats:', error);
+    logger.error('Failed to get location stats:', error);
     return {
       totalCountries: 0,
       cachedCountries: 0,
@@ -676,9 +677,9 @@ export async function clearLocationCache(): Promise<void> {
     const cacheSnapshot = await getDocs(collection(db, 'locationCache'));
     const deletePromises = cacheSnapshot.docs.map(doc => doc.ref.delete());
     await Promise.all(deletePromises);
-    console.log('✅ Location cache cleared');
+    logger.debug('✅ Location cache cleared');
   } catch (error) {
-    console.error('Failed to clear location cache:', error);
+    logger.error('Failed to clear location cache:', error);
   }
 }
 

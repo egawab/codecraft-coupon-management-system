@@ -2,9 +2,10 @@
 // These methods are essential for the Data Intelligence Center and dashboard functionality
 
 import { Coupon, Redemption, Shop, Referral, AdminCreditLog, CreditRequest, CreditKey } from '../types';
+import { logger } from '../utils/logger';
 
 // Generate realistic mock data for comprehensive testing
-const generateMockRedemptions = (shopId: string, count: number = 10): any[] => {
+const generateMockRedemptions = (shopId: string, count: number = 10): unknown[] => {
     const mockRedemptions = [];
     const now = new Date();
     
@@ -39,7 +40,7 @@ const generateMockRedemptions = (shopId: string, count: number = 10): any[] => {
     return mockRedemptions.sort((a, b) => new Date(b.redeemedAt).getTime() - new Date(a.redeemedAt).getTime());
 };
 
-const generateMockAffiliates = (shopId: string): any[] => {
+const generateMockAffiliates = (shopId: string): unknown[] => {
     const affiliateCount = Math.floor(Math.random() * 8) + 3; // 3-10 affiliates
     const mockAffiliates = [];
     
@@ -62,7 +63,7 @@ const generateMockAffiliates = (shopId: string): any[] => {
     return mockAffiliates.sort((a, b) => b.totalRedemptions - a.totalRedemptions);
 };
 
-const generateMockCustomerData = (shopId: string): any[] => {
+const generateMockCustomerData = (shopId: string): unknown[] => {
     const customerCount = Math.floor(Math.random() * 25) + 10; // 10-35 customers
     const mockCustomers = [];
     
@@ -105,55 +106,55 @@ const generateMockCustomerData = (shopId: string): any[] => {
 export const mockApi = {
     // ✅ FIXED: Shop owner affiliate visibility
     getRedemptionsForShop: async (shopId: string): Promise<any[]> => {
-        console.log('🔧 MOCK: Fetching redemptions for shop:', shopId);
+        logger.debug('🔧 MOCK: Fetching redemptions for shop:', shopId);
         const mockRedemptions = generateMockRedemptions(shopId, Math.floor(Math.random() * 20) + 10);
-        console.log(`🔧 MOCK: Returning ${mockRedemptions.length} redemptions for shop ${shopId}`);
+        logger.debug(`🔧 MOCK: Returning ${mockRedemptions.length} redemptions for shop ${shopId}`);
         return mockRedemptions;
     },
 
     // ✅ FIXED: Shop owner affiliate insights
     getAffiliatesForShop: async (shopId: string): Promise<any[]> => {
-        console.log('🔧 MOCK: Fetching affiliates for shop:', shopId);
+        logger.debug('🔧 MOCK: Fetching affiliates for shop:', shopId);
         const mockAffiliates = generateMockAffiliates(shopId);
-        console.log(`🔧 MOCK: Returning ${mockAffiliates.length} affiliates for shop ${shopId}`);
+        logger.debug(`🔧 MOCK: Returning ${mockAffiliates.length} affiliates for shop ${shopId}`);
         return mockAffiliates;
     },
 
     // ✅ FIXED: Shop owner customer data visibility
     getCustomerDataForShop: async (shopId: string): Promise<any[]> => {
-        console.log('🔧 MOCK: Fetching customer data for shop:', shopId);
+        logger.debug('🔧 MOCK: Fetching customer data for shop:', shopId);
         const mockCustomerData = generateMockCustomerData(shopId);
-        console.log(`🔧 MOCK: Returning ${mockCustomerData.length} customer records for shop ${shopId}`);
+        logger.debug(`🔧 MOCK: Returning ${mockCustomerData.length} customer records for shop ${shopId}`);
         return mockCustomerData;
     },
 
     // ✅ FIXED: Affiliate dashboard customer data
     getCustomerDataForAffiliate: async (affiliateId: string): Promise<any[]> => {
-        console.log('🔧 MOCK: Fetching customer data for affiliate:', affiliateId);
+        logger.debug('🔧 MOCK: Fetching customer data for affiliate:', affiliateId);
         const mockCustomerData = generateMockCustomerData(affiliateId).map(customer => ({
             ...customer,
             affiliateId,
             affiliateName: `Affiliate ${affiliateId.slice(-4)}`
         }));
-        console.log(`🔧 MOCK: Returning ${mockCustomerData.length} customer records for affiliate ${affiliateId}`);
+        logger.debug(`🔧 MOCK: Returning ${mockCustomerData.length} customer records for affiliate ${affiliateId}`);
         return mockCustomerData;
     },
 
     // ✅ FIXED: Affiliate redemption data
     getRedemptionsForAffiliate: async (affiliateId: string): Promise<any[]> => {
-        console.log('🔧 MOCK: Fetching redemptions for affiliate:', affiliateId);
+        logger.debug('🔧 MOCK: Fetching redemptions for affiliate:', affiliateId);
         const mockRedemptions = generateMockRedemptions(affiliateId, Math.floor(Math.random() * 15) + 5).map(redemption => ({
             ...redemption,
             affiliateId,
             affiliateName: `Affiliate ${affiliateId.slice(-4)}`
         }));
-        console.log(`🔧 MOCK: Returning ${mockRedemptions.length} redemptions for affiliate ${affiliateId}`);
+        logger.debug(`🔧 MOCK: Returning ${mockRedemptions.length} redemptions for affiliate ${affiliateId}`);
         return mockRedemptions;
     },
 
     // ✅ CRITICAL: Data Intelligence Center methods
     getDirectFirebaseCollection: async (collectionName: string): Promise<any[]> => {
-        console.log(`🔧 MOCK: Fetching ${collectionName} collection...`);
+        logger.debug(`🔧 MOCK: Fetching ${collectionName} collection...`);
         
         if (collectionName === 'adminActivityLog' || collectionName === 'userActionLog') {
             const activityCount = Math.floor(Math.random() * 50) + 20;
@@ -176,56 +177,56 @@ export const mockApi = {
                 });
             }
             
-            console.log(`🔧 MOCK: Returning ${mockActivities.length} ${collectionName} records`);
+            logger.debug(`🔧 MOCK: Returning ${mockActivities.length} ${collectionName} records`);
             return mockActivities;
         }
         
-        console.log(`🔧 MOCK: Returning empty array for ${collectionName}`);
+        logger.debug(`🔧 MOCK: Returning empty array for ${collectionName}`);
         return [];
     },
 
-    logUserActivity: async (activityData: any): Promise<void> => {
-        console.log('🔧 MOCK: Logging user activity:', activityData);
+    logUserActivity: async (activityData: unknown): Promise<void> => {
+        logger.debug('🔧 MOCK: Logging user activity:', activityData);
         return Promise.resolve();
     },
 
     // ✅ Add other critical missing methods
     getAllShops: async (): Promise<Shop[]> => {
-        console.log('🔧 MOCK: Fetching all shops');
+        logger.debug('🔧 MOCK: Fetching all shops');
         return []; // Return empty array for now
     },
 
     getAllCoupons: async (): Promise<Coupon[]> => {
-        console.log('🔧 MOCK: Fetching all coupons');
+        logger.debug('🔧 MOCK: Fetching all coupons');
         return []; // Return empty array for now
     },
 
     getAllRedemptions: async (): Promise<any[]> => {
-        console.log('🔧 MOCK: Fetching all redemptions');
+        logger.debug('🔧 MOCK: Fetching all redemptions');
         const mockRedemptions = generateMockRedemptions('all_shops', 50);
-        console.log(`🔧 MOCK: Returning ${mockRedemptions.length} total redemptions`);
+        logger.debug(`🔧 MOCK: Returning ${mockRedemptions.length} total redemptions`);
         return mockRedemptions;
     },
 
     getAllReferrals: async (): Promise<Referral[]> => {
-        console.log('🔧 MOCK: Fetching all referrals');
+        logger.debug('🔧 MOCK: Fetching all referrals');
         return []; // Return empty array for now
     },
 
     getAdminCreditLogs: async (): Promise<AdminCreditLog[]> => {
-        console.log('🔧 MOCK: Fetching admin credit logs');
+        logger.debug('🔧 MOCK: Fetching admin credit logs');
         return []; // Return empty array for now
     },
 
     getCreditRequests: async (): Promise<CreditRequest[]> => {
-        console.log('🔧 MOCK: Fetching credit requests');
+        logger.debug('🔧 MOCK: Fetching credit requests');
         return []; // Return empty array for now
     },
 
     getCreditKeys: async (): Promise<CreditKey[]> => {
-        console.log('🔧 MOCK: Fetching credit keys');
+        logger.debug('🔧 MOCK: Fetching credit keys');
         return []; // Return empty array for now
     }
 };
 
-console.log('🔧 MOCK API: All critical methods implemented for affiliate and customer data visibility');
+logger.debug('🔧 MOCK API: All critical methods implemented for affiliate and customer data visibility');

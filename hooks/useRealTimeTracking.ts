@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { logger } from '../utils/logger';
 import { collection, onSnapshot, query, orderBy, where, limit, addDoc, serverTimestamp } from 'firebase/firestore';
+import { logger } from '../utils/logger';
 import { db } from '../firebase';
+import { logger } from '../utils/logger';
 
 export interface RealTimeTrackingData {
-    redemptions: any[];
-    systemActivity: any[];
-    customerData: any[];
-    userActions: any[];
+    redemptions: unknown[];
+    systemActivity: unknown[];
+    customerData: unknown[];
+    userActions: unknown[];
     loading: boolean;
     lastUpdate: Date | null;
-    allActivities: any[];
+    allActivities: unknown[];
     totalActivities: number;
     realtimeStats: {
         redemptionsToday: number;
@@ -19,7 +22,7 @@ export interface RealTimeTrackingData {
 }
 
 // CRITICAL: Pre-define all constants to prevent minification issues
-const EMPTY_ARRAY: any[] = [];
+const EMPTY_ARRAY: unknown[] = [];
 const INITIAL_STATS = {
     redemptionsToday: 0,
     activeUsers: 0,
@@ -64,12 +67,12 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
         userId: string;
         userName: string;
         action: string;
-        details?: any;
+        details?: unknown;
         page?: string;
         timestamp?: Date;
     }) => {
         try {
-            console.log('📍 Tracking user action:', actionData);
+            logger.debug('📍 Tracking user action:', actionData);
             
             const userActionRef = collection(db, 'userActionLog');
             await addDoc(userActionRef, {
@@ -89,12 +92,12 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
                 }
             });
         } catch (error) {
-            console.error('❌ Error tracking user action:', error);
+            logger.error('❌ Error tracking user action:', error);
         }
     }, []);
 
     // Helper function to safely process data
-    const processDataSafely = useCallback((rawData: any): RealTimeTrackingData => {
+    const processDataSafely = useCallback((rawData: unknown): RealTimeTrackingData => {
         // Ensure all arrays are valid
         const safeRedemptions = Array.isArray(rawData?.redemptions) ? rawData.redemptions : [];
         const safeSystemActivity = Array.isArray(rawData?.systemActivity) ? rawData.systemActivity : [];
@@ -105,22 +108,22 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
 
         // Combine all activities safely
         const allActivities = [
-            ...safeRedemptions.map((r: any) => ({ 
+            ...safeRedemptions.map((r: unknown) => ({ 
                 ...r, 
                 type: 'redemption', 
                 timestamp: r.redeemedAt || r.timestamp || new Date() 
             })),
-            ...safeSystemActivity.map((a: any) => ({ 
+            ...safeSystemActivity.map((a: unknown) => ({ 
                 ...a, 
                 type: 'system_activity', 
                 timestamp: a.timestamp || new Date() 
             })),
-            ...safeCustomerData.map((c: any) => ({ 
+            ...safeCustomerData.map((c: unknown) => ({ 
                 ...c, 
                 type: 'customer_interaction', 
                 timestamp: c.timestamp || c.redeemedAt || new Date() 
             })),
-            ...safeUserActions.map((u: any) => ({ 
+            ...safeUserActions.map((u: unknown) => ({ 
                 ...u, 
                 type: 'user_action', 
                 timestamp: u.timestamp || new Date() 
@@ -136,18 +139,18 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
         const realtimeStats = {
-            redemptionsToday: safeRedemptions.filter((r: any) => {
+            redemptionsToday: safeRedemptions.filter((r: unknown) => {
                 const redeemedAt = r.redeemedAt ? new Date(r.redeemedAt) : null;
                 return redeemedAt && redeemedAt >= todayStart;
             }).length,
             activeUsers: new Set(
                 safeUserActions
-                    .filter((u: any) => {
+                    .filter((u: unknown) => {
                         const timestamp = u.timestamp ? new Date(u.timestamp) : null;
                         return timestamp && timestamp.getTime() > Date.now() - 30 * 60 * 1000;
                     })
-                    .map((u: any) => u.userId)
-                    .filter((id: any) => id)
+                    .map((u: unknown) => u.userId)
+                    .filter((id: unknown) => id)
             ).size,
             lastActivity: allActivities.length > 0 ? allActivities[0].timestamp : null
         };
@@ -169,7 +172,7 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
     const setupListeners = useCallback(() => {
         // CRITICAL FIX: Don't set up listeners if disabled or already cleaning up
         if (!enableRealTime || isCleaningUp.current) {
-            console.log('⚠️ Real-time tracking disabled or cleaning up, skipping listener setup');
+            logger.debug('⚠️ Real-time tracking disabled or cleaning up, skipping listener setup');
             setTrackingState(prev => processDataSafely({
                 ...prev,
                 loading: false
@@ -180,7 +183,7 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
         const unsubscribes: (() => void)[] = [];
         
         try {
-            console.log('🔴 Setting up real-time listeners for roles:', userRole);
+            logger.debug('🔴 Setting up real-time listeners for roles:', userRole);
             
             // CRITICAL FIX: Add error handlers to each listener
             // Redemptions listener
@@ -208,7 +211,7 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
                     }));
                 },
                 (error) => {
-                    console.error('❌ Redemptions listener error:', error);
+                    logger.error('❌ Redemptions listener error:', error);
                     // Don't crash the app, just log the error
                 }
             );
@@ -239,7 +242,7 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
                     }));
                 },
                 (error) => {
-                    console.error('❌ Admin activity listener error:', error);
+                    logger.error('❌ Admin activity listener error:', error);
                 }
             );
             unsubscribes.push(unsubAdminActivity);
@@ -269,7 +272,7 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
                     }));
                 },
                 (error) => {
-                    console.error('❌ User actions listener error:', error);
+                    logger.error('❌ User actions listener error:', error);
                 }
             );
             unsubscribes.push(unsubUserActions);
@@ -311,7 +314,7 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
                         }));
                     },
                     (error) => {
-                        console.error('❌ Customer data listener error:', error);
+                        logger.error('❌ Customer data listener error:', error);
                     }
                 );
                 unsubscribes.push(unsubCustomerData);
@@ -324,7 +327,7 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
             }));
 
         } catch (error) {
-            console.error('❌ Error setting up real-time listeners:', error);
+            logger.error('❌ Error setting up real-time listeners:', error);
             setTrackingState(prev => processDataSafely({
                 ...prev,
                 loading: false
@@ -343,14 +346,14 @@ export const useRealTimeTracking = function useRealTimeTrackingImpl(
         const unsubscribes = setupListeners();
         
         return () => {
-            console.log('🔴 Cleaning up real-time listeners...');
+            logger.debug('🔴 Cleaning up real-time listeners...');
             isCleaningUp.current = true;
             
             unsubscribes.forEach(unsubscribe => {
                 try {
                     unsubscribe();
                 } catch (error) {
-                    console.error('❌ Error unsubscribing:', error);
+                    logger.error('❌ Error unsubscribing:', error);
                 }
             });
             unsubscribeRefs.current = [];

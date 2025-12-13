@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { logger } from '../utils/logger';
 import {
   ChartBarIcon,
   UserGroupIcon,
@@ -12,8 +13,11 @@ import {
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
 import { api } from '../services/api';
+import { logger } from '../utils/logger';
 import LoadingSkeleton, { StatCardSkeleton } from './LoadingSkeleton';
+import { logger } from '../utils/logger';
 import EmptyState from './EmptyState';
+import { logger } from '../utils/logger';
 
 interface AnalyticsData {
   totalCoupons: number;
@@ -146,7 +150,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         geographicData
       });
     } catch (err) {
-      console.error('Failed to fetch analytics:', err);
+      logger.error('Failed to fetch analytics:', err);
       setError('Failed to load analytics data');
     } finally {
       setLoading(false);

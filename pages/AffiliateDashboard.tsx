@@ -1,14 +1,24 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { logger } from '../utils/logger';
 import { useRealTimeTracking } from '../hooks/useRealTimeTracking';
+import { logger } from '../utils/logger';
 import StatCard from '../components/StatCard';
+import { logger } from '../utils/logger';
 import { BanknotesIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { logger } from '../utils/logger';
 import { useAuth } from '../hooks/useAuth';
+import { logger } from '../utils/logger';
 import { useTranslation } from '../hooks/useTranslation';
+import { logger } from '../utils/logger';
 import { api } from '../services/api';
+import { logger } from '../utils/logger';
 import { Coupon, Redemption } from '../types';
+import { logger } from '../utils/logger';
 import CouponCard from '../components/CouponCard';
+import { logger } from '../utils/logger';
 import QRCodeModal from '../components/QRCodeModal';
+import { logger } from '../utils/logger';
 
 const AffiliateDashboard: React.FC = () => {
     const { user } = useAuth();
@@ -34,7 +44,7 @@ const AffiliateDashboard: React.FC = () => {
                 customer => customer.affiliateId === user?.id
             );
             setCustomerData(affiliateCustomerData);
-            console.log(`🔴 LIVE: Affiliate received ${affiliateCustomerData.length} customer interactions`);
+            logger.debug(`🔴 LIVE: Affiliate received ${affiliateCustomerData.length} customer interactions`);
         }
     }, [trackingData?.customerData, user?.id]);
 
@@ -45,13 +55,13 @@ const AffiliateDashboard: React.FC = () => {
                 redemption => redemption.affiliateId === user?.id
             );
             setRedemptions(affiliateRedemptions);
-            console.log(`🔴 LIVE: Affiliate received ${affiliateRedemptions.length} redemptions`);
+            logger.debug(`🔴 LIVE: Affiliate received ${affiliateRedemptions.length} redemptions`);
         }
     }, [trackingData.redemptions, user?.id]);
 
     const fetchData = useCallback(async () => {
         if (user) {
-            console.log('🔄 Fetching initial affiliate data for user:', user.id);
+            logger.debug('🔄 Fetching initial affiliate data for user:', user.id);
             setLoading(true);
             
             const [allCoupons, affiliateRedemptions, affiliateCustomers] = await Promise.all([
@@ -60,7 +70,7 @@ const AffiliateDashboard: React.FC = () => {
                 api.getCustomerDataForAffiliate(user.id),
             ]);
             
-            console.log('📊 Initial affiliate data fetched:', {
+            logger.debug('📊 Initial affiliate data fetched:', {
                 coupons: allCoupons.length,
                 redemptions: affiliateRedemptions.length,
                 customers: affiliateCustomers.length
@@ -180,17 +190,7 @@ const AffiliateDashboard: React.FC = () => {
                                     >
                                         🔄 {loading ? 'Refreshing...' : 'Refresh Data'}
                                     </button>
-                                    <button
-                                        onClick={() => {
-                                            console.log('🔍 Affiliate Debug - User ID:', user.id);
-                                            console.log('🔍 Affiliate Debug - Customer Data:', customerData);
-                                            console.log('🔍 Affiliate Debug - Redemptions:', redemptions);
-                                            console.log('🔍 Affiliate Debug - Stats:', { totalPointsEarned, totalExecutions, totalCustomers, uniqueShops });
-                                        }}
-                                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all font-medium flex items-center gap-2"
-                                    >
-                                        🔧 Debug
-                                    </button>
+                                    {/* Debug button removed for production */}
                                 </div>
                             </div>
                         </div>
