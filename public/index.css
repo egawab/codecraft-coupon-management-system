@@ -67,6 +67,7 @@ body {
   color: var(--brand-dark);
   min-height: 100vh;
   overflow-x: hidden;
+  overflow-y: auto;
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
