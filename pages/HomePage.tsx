@@ -226,21 +226,21 @@ const HomePage: React.FC = () => {
                         <div className="inline-flex p-4 rounded-full bg-blue-100 text-blue-600 mb-4">
                             <GlobeAltIcon className="h-8 w-8" />
                         </div>
-                        <div className="text-4xl font-bold text-gray-800 mb-2">25+</div>
+                        <div className="text-4xl font-bold text-gray-800 mb-2">195+</div>
                         <div className="text-gray-600 font-medium">{t('home.globalCoverage.countries')}</div>
                     </div>
                     <div className="homepage-coverage-stat">
                         <div className="inline-flex p-4 rounded-full bg-purple-100 text-purple-600 mb-4">
                             <MapPinIcon className="h-8 w-8" />
                         </div>
-                        <div className="text-4xl font-bold text-gray-800 mb-2">150+</div>
+                        <div className="text-4xl font-bold text-gray-800 mb-2">4M+</div>
                         <div className="text-gray-600 font-medium">{t('home.globalCoverage.cities')}</div>
                     </div>
                     <div className="homepage-coverage-stat">
                         <div className="inline-flex p-4 rounded-full bg-pink-100 text-pink-600 mb-4">
                             <MapPinIcon className="h-8 w-8" />
                         </div>
-                        <div className="text-4xl font-bold text-gray-800 mb-2">1000+</div>
+                        <div className="text-4xl font-bold text-gray-800 mb-2">∞</div>
                         <div className="text-gray-600 font-medium">{t('home.globalCoverage.areas')}</div>
                     </div>
                 </div>

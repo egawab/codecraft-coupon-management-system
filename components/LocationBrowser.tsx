@@ -105,7 +105,7 @@ const LocationBrowser: React.FC = () => {
             🌍 Explore Locations Worldwide
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Browse coupons and deals from {countries.length}+ countries, 150+ cities, and 1000+ local areas
+            Browse coupons and deals from all {countries.length} countries worldwide with millions of cities and areas
           </p>
         </div>
 
@@ -137,13 +137,13 @@ const LocationBrowser: React.FC = () => {
           </div>
           <div className="glass-panel p-6 text-center hover:shadow-glow transition-all duration-300">
             <BuildingOfficeIcon className="h-12 w-12 text-purple-500 mx-auto mb-3" />
-            <div className="text-3xl font-bold text-gray-800">150+</div>
-            <div className="text-gray-600">Major Cities</div>
+            <div className="text-3xl font-bold text-gray-800">4M+</div>
+            <div className="text-gray-600">Cities Worldwide</div>
           </div>
           <div className="glass-panel p-6 text-center hover:shadow-glow transition-all duration-300">
             <MapPinIcon className="h-12 w-12 text-pink-500 mx-auto mb-3" />
-            <div className="text-3xl font-bold text-gray-800">1000+</div>
-            <div className="text-gray-600">Local Areas</div>
+            <div className="text-3xl font-bold text-gray-800">∞</div>
+            <div className="text-gray-600">Local Districts</div>
           </div>
         </div>
 
