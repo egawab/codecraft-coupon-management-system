@@ -11,11 +11,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { logger } from '../utils/logger';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { logger } from '../utils/logger';
 import { searchCitiesByName } from '../services/locationService';
-import { logger } from '../utils/logger';
 import { useDebounce } from '../hooks/useDebounce';
-import { logger } from '../utils/logger';
 
 interface City {
   id: string | number;

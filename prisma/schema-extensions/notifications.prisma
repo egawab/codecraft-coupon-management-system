@@ -1,0 +1,76 @@
+// ============================================
+// PUSH NOTIFICATIONS (Future Feature)
+// ============================================
+// Add these models to your main schema.prisma when implementing
+
+// model PushSubscription {
+//   id             String   @id @default(cuid())
+//   userId         String
+//   endpoint       String   @unique
+//   platform       String   // 'web', 'ios', 'android'
+//   auth           String   // Push auth key
+//   p256dh         String   // Push public key
+//   expirationTime BigInt?
+//   userAgent      String?
+//   isActive       Boolean  @default(true)
+//   createdAt      DateTime @default(now())
+//   lastUsedAt     DateTime @default(now())
+//
+//   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+//
+//   @@index([userId])
+//   @@index([endpoint])
+//   @@index([platform])
+//   @@map("push_subscriptions")
+// }
+
+// model NotificationPreference {
+//   id                String   @id @default(cuid())
+//   userId            String   @unique
+//   enabled           Boolean  @default(true)
+//   channelCoupons    Boolean  @default(true)
+//   channelStores     Boolean  @default(true)
+//   channelAffiliate  Boolean  @default(true)
+//   channelSystem     Boolean  @default(true)
+//   channelMarketing  Boolean  @default(false)
+//   quietHoursEnabled Boolean  @default(false)
+//   quietHoursStart   String?  // "22:00"
+//   quietHoursEnd     String?  // "08:00"
+//   sound             Boolean  @default(true)
+//   vibration         Boolean  @default(true)
+//   createdAt         DateTime @default(now())
+//   updatedAt         DateTime @updatedAt
+//
+//   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+//
+//   @@index([userId])
+//   @@map("notification_preferences")
+// }
+
+// model NotificationDelivery {
+//   id              String   @id @default(cuid())
+//   notificationId  String
+//   subscriptionId  String
+//   status          String   // 'pending', 'sent', 'failed', 'clicked', 'dismissed'
+//   sentAt          DateTime?
+//   clickedAt       DateTime?
+//   dismissedAt     DateTime?
+//   error           String?  @db.Text
+//   createdAt       DateTime @default(now())
+//
+//   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+//   subscription PushSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+//
+//   @@index([notificationId])
+//   @@index([subscriptionId])
+//   @@index([status])
+//   @@index([sentAt])
+//   @@map("notification_deliveries")
+// }
+
+// Note: Also add these relations to User model:
+// pushSubscriptions       PushSubscription[]
+// notificationPreferences NotificationPreference?
+
+// Note: Also add this relation to Notification model:
+// deliveries NotificationDelivery[]

@@ -12,13 +12,9 @@
 import React, { useState, useEffect } from 'react';
 import { logger } from '../utils/logger';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
-import { logger } from '../utils/logger';
 import { getAllCountries } from '../services/geonamesApi';
-import { logger } from '../utils/logger';
 import { getCitiesForCountry, getDistrictsForCity } from '../services/locationService';
-import { logger } from '../utils/logger';
 import CitySearchSelector from './CitySearchSelector';
-import { logger } from '../utils/logger';
 
 interface LocationData {
   country: string;

@@ -1,0 +1,50 @@
+{
+  "app_name": "Kobonz",
+  "tagline": "Entdecken und teilen Sie tolle Angebote in Ihrer Nähe",
+  
+  "nav": {
+    "home": "Startseite",
+    "coupons": "Gutscheine",
+    "stores": "Geschäfte",
+    "categories": "Kategorien",
+    "dashboard": "Dashboard",
+    "login": "Anmelden",
+    "register": "Registrieren",
+    "logout": "Abmelden",
+    "profile": "Profil"
+  },
+  
+  "actions": {
+    "search": "Suchen",
+    "filter": "Filtern",
+    "sort": "Sortieren",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "view": "Ansehen",
+    "share": "Teilen",
+    "copy": "Kopieren",
+    "close": "Schließen",
+    "submit": "Absenden",
+    "back": "Zurück",
+    "next": "Weiter",
+    "previous": "Vorherige",
+    "load_more": "Mehr laden",
+    "refresh": "Aktualisieren"
+  },
+  
+  "common": {
+    "loading": "Laden...",
+    "error": "Ein Fehler ist aufgetreten",
+    "success": "Erfolg",
+    "no_results": "Keine Ergebnisse gefunden",
+    "try_again": "Erneut versuchen",
+    "or": "oder",
+    "and": "und",
+    "all": "Alle",
+    "none": "Keine",
+    "optional": "Optional",
+    "required": "Erforderlich"
+  }
+}

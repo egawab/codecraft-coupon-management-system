@@ -1,0 +1,66 @@
+{
+  "app_name": "Kobonz",
+  "tagline": "Discover and share amazing deals in your local area",
+  
+  "nav": {
+    "home": "Home",
+    "coupons": "Coupons",
+    "stores": "Stores",
+    "categories": "Categories",
+    "dashboard": "Dashboard",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "profile": "Profile"
+  },
+  
+  "actions": {
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "share": "Share",
+    "copy": "Copy",
+    "close": "Close",
+    "submit": "Submit",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "load_more": "Load More",
+    "refresh": "Refresh"
+  },
+  
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "no_results": "No results found",
+    "try_again": "Try again",
+    "or": "or",
+    "and": "and",
+    "all": "All",
+    "none": "None",
+    "optional": "Optional",
+    "required": "Required"
+  },
+  
+  "time": {
+    "just_now": "Just now",
+    "minutes_ago": "{{count}} minutes ago",
+    "hours_ago": "{{count}} hours ago",
+    "days_ago": "{{count}} days ago",
+    "weeks_ago": "{{count}} weeks ago",
+    "months_ago": "{{count}} months ago",
+    "years_ago": "{{count}} years ago"
+  },
+  
+  "pagination": {
+    "page": "Page {{current}} of {{total}}",
+    "showing": "Showing {{from}} to {{to}} of {{total}} results",
+    "per_page": "Per page"
+  }
+}

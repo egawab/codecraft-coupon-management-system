@@ -1,0 +1,19 @@
+{
+  "name": "kobonz-production",
+  "scripts": {
+    "build:production": "NODE_ENV=production next build",
+    "start:production": "NODE_ENV=production next start",
+    "analyze": "ANALYZE=true npm run build",
+    "cache:clear": "tsx scripts/clear-cache.ts",
+    "db:backup": "tsx scripts/backup-database.ts",
+    "health:check": "tsx scripts/health-check.ts",
+    "sitemap:generate": "tsx scripts/generate-sitemap.ts"
+  },
+  "production": {
+    "notes": [
+      "Use these scripts for production operations",
+      "Always test in staging before production",
+      "Monitor logs and metrics after deployment"
+    ]
+  }
+}

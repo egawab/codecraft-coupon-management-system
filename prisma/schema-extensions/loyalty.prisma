@@ -1,0 +1,164 @@
+// ============================================
+// LOYALTY SYSTEM (Future Feature)
+// ============================================
+// Add these models to your main schema.prisma when implementing
+
+// enum LoyaltyTier {
+//   BRONZE
+//   SILVER
+//   GOLD
+//   PLATINUM
+//   DIAMOND
+// }
+
+// enum PointTransactionType {
+//   EARN_COUPON_USE
+//   EARN_REVIEW
+//   EARN_REFERRAL
+//   EARN_DAILY_LOGIN
+//   EARN_ACHIEVEMENT
+//   REDEEM_REWARD
+//   EXPIRE
+//   ADMIN_ADJUST
+// }
+
+// enum AchievementCategory {
+//   SAVINGS
+//   SOCIAL
+//   EXPLORER
+//   LOYALTY
+//   SPECIAL
+// }
+
+// enum RewardType {
+//   DISCOUNT_COUPON
+//   EXCLUSIVE_DEAL
+//   FEATURED_LISTING
+//   PRIORITY_SUPPORT
+//   CUSTOM
+// }
+
+// model LoyaltyAccount {
+//   id              String   @id @default(cuid())
+//   userId          String   @unique
+//   points          Int      @default(0)
+//   lifetimePoints  Int      @default(0)
+//   tier            LoyaltyTier @default(BRONZE)
+//   createdAt       DateTime @default(now())
+//   updatedAt       DateTime @updatedAt
+//
+//   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   transactions    PointTransaction[]
+//   achievements    UserAchievement[]
+//   redemptions     RewardRedemption[]
+//
+//   @@index([userId])
+//   @@index([tier])
+//   @@index([points])
+//   @@map("loyalty_accounts")
+// }
+
+// model PointTransaction {
+//   id          String              @id @default(cuid())
+//   accountId   String
+//   type        PointTransactionType
+//   points      Int
+//   balance     Int
+//   description String
+//   metadata    String?             @db.Text
+//   expiresAt   DateTime?
+//   createdAt   DateTime            @default(now())
+//
+//   account     LoyaltyAccount      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+//
+//   @@index([accountId])
+//   @@index([type])
+//   @@index([createdAt])
+//   @@index([expiresAt])
+//   @@map("point_transactions")
+// }
+
+// model Achievement {
+//   id          String              @id @default(cuid())
+//   name        String
+//   description String
+//   category    AchievementCategory
+//   icon        String
+//   points      Int
+//   condition   String              @db.Text // JSON
+//   isSecret    Boolean             @default(false)
+//   order       Int
+//   createdAt   DateTime            @default(now())
+//   updatedAt   DateTime            @updatedAt
+//
+//   userAchievements UserAchievement[]
+//
+//   @@index([category])
+//   @@index([order])
+//   @@map("achievements")
+// }
+
+// model UserAchievement {
+//   id            String      @id @default(cuid())
+//   accountId     String
+//   achievementId String
+//   progress      Int         @default(0)
+//   isCompleted   Boolean     @default(false)
+//   unlockedAt    DateTime?
+//   createdAt     DateTime    @default(now())
+//   updatedAt     DateTime    @updatedAt
+//
+//   account       LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+//   achievement   Achievement    @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+//
+//   @@unique([accountId, achievementId])
+//   @@index([accountId])
+//   @@index([achievementId])
+//   @@index([isCompleted])
+//   @@map("user_achievements")
+// }
+
+// model Reward {
+//   id          String      @id @default(cuid())
+//   name        String
+//   description String
+//   type        RewardType
+//   pointsCost  Int
+//   tier        LoyaltyTier?
+//   stock       Int?
+//   isActive    Boolean     @default(true)
+//   imageUrl    String?
+//   metadata    String?     @db.Text
+//   expiresAt   DateTime?
+//   createdAt   DateTime    @default(now())
+//   updatedAt   DateTime    @updatedAt
+//
+//   redemptions RewardRedemption[]
+//
+//   @@index([type])
+//   @@index([tier])
+//   @@index([isActive])
+//   @@map("rewards")
+// }
+
+// model RewardRedemption {
+//   id          String   @id @default(cuid())
+//   accountId   String
+//   rewardId    String
+//   pointsSpent Int
+//   status      String   @default("pending") // pending, approved, delivered, cancelled
+//   redeemedAt  DateTime @default(now())
+//   deliveredAt DateTime?
+//
+//   account     LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+//   reward      Reward         @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+//
+//   @@index([accountId])
+//   @@index([rewardId])
+//   @@index([status])
+//   @@index([redeemedAt])
+//   @@map("reward_redemptions")
+// }
+
+// Note: Also add this relation to User model:
+// loyaltyAccount LoyaltyAccount?

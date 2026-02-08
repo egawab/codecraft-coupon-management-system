@@ -1,0 +1,50 @@
+{
+  "app_name": "Kobonz",
+  "tagline": "Découvrez et partagez des offres incroyables dans votre région",
+  
+  "nav": {
+    "home": "Accueil",
+    "coupons": "Coupons",
+    "stores": "Magasins",
+    "categories": "Catégories",
+    "dashboard": "Tableau de bord",
+    "login": "Connexion",
+    "register": "S'inscrire",
+    "logout": "Déconnexion",
+    "profile": "Profil"
+  },
+  
+  "actions": {
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sort": "Trier",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "view": "Voir",
+    "share": "Partager",
+    "copy": "Copier",
+    "close": "Fermer",
+    "submit": "Soumettre",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "load_more": "Charger plus",
+    "refresh": "Actualiser"
+  },
+  
+  "common": {
+    "loading": "Chargement...",
+    "error": "Une erreur s'est produite",
+    "success": "Succès",
+    "no_results": "Aucun résultat trouvé",
+    "try_again": "Réessayer",
+    "or": "ou",
+    "and": "et",
+    "all": "Tous",
+    "none": "Aucun",
+    "optional": "Optionnel",
+    "required": "Obligatoire"
+  }
+}

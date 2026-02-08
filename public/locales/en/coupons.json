@@ -1,0 +1,58 @@
+{
+  "title": "Coupons",
+  "subtitle": "Find the best deals and discounts",
+  
+  "labels": {
+    "code": "Coupon Code",
+    "discount": "Discount",
+    "expires": "Expires",
+    "conditions": "Conditions",
+    "description": "Description",
+    "store": "Store",
+    "category": "Category"
+  },
+  
+  "types": {
+    "percentage": "Percentage Off",
+    "fixed_amount": "Fixed Amount Off",
+    "buy_one_get_one": "Buy One Get One",
+    "free_shipping": "Free Shipping",
+    "other": "Special Offer"
+  },
+  
+  "status": {
+    "active": "Active",
+    "expired": "Expired",
+    "expiring_soon": "Expiring Soon",
+    "coming_soon": "Coming Soon"
+  },
+  
+  "actions": {
+    "copy_code": "Copy Code",
+    "code_copied": "Code Copied!",
+    "get_deal": "Get Deal",
+    "view_details": "View Details",
+    "add_to_favorites": "Add to Favorites",
+    "remove_from_favorites": "Remove from Favorites",
+    "share_coupon": "Share Coupon"
+  },
+  
+  "filters": {
+    "all_categories": "All Categories",
+    "all_types": "All Types",
+    "sort_by": "Sort By",
+    "sort_newest": "Newest First",
+    "sort_popular": "Most Popular",
+    "sort_expiring": "Expiring Soon",
+    "sort_discount": "Highest Discount"
+  },
+  
+  "messages": {
+    "no_coupons": "No coupons available",
+    "expires_in": "Expires in {{days}} days",
+    "expired_on": "Expired on {{date}}",
+    "min_purchase": "Minimum purchase: {{amount}}",
+    "max_uses": "Limited to {{count}} uses",
+    "used_count": "Used {{count}} times"
+  }
+}

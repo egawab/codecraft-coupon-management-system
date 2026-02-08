@@ -1,0 +1,1014 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Role {
+  SUPER_ADMIN
+  STORE_OWNER
+  AFFILIATE
+  USER
+}
+
+enum CouponStatus {
+  PENDING       // Awaiting admin approval
+  APPROVED      // Approved by admin, not yet active
+  ACTIVE        // Currently active and usable
+  EXPIRED       // Past expiry date
+  REJECTED      // Rejected by admin
+  PAUSED        // Temporarily paused by store owner
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  BUY_ONE_GET_ONE
+  FREE_SHIPPING
+  OTHER
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String?   // Nullable for OAuth users
+  role          Role      @default(USER)
+  avatar        String?
+  isActive      Boolean   @default(true)
+  emailVerified DateTime? // Email verification timestamp
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // OAuth
+  googleId      String?   @unique
+
+  // Stripe
+  stripeCustomerId String? @unique
+
+  // Relations
+  stores          Store[]
+  coupons         Coupon[]          @relation("CouponCreator")
+  usedCoupons     CouponUsage[]
+  affiliate       Affiliate?
+  reviews         Review[]
+  favorites       Favorite[]
+  accounts        Account[]
+  sessions        Session[]
+  refreshTokens   RefreshToken[]
+  verificationTokens VerificationToken[]
+  passwordResetTokens PasswordResetToken[]
+  subscriptions   Subscription[]
+  pushSubscriptions PushSubscription[]
+  notificationPreferences NotificationPreference?
+
+  @@index([email])
+  @@index([role])
+  @@index([createdAt])
+  @@index([googleId])
+  @@index([stripeCustomerId])
+  @@map("users")
+}
+
+// NextAuth Account model
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+// NextAuth Session model
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Refresh Token for JWT
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// Email Verification Token
+model VerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  email     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("verification_tokens")
+}
+
+// Password Reset Token
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+// ============================================
+// LOCATION HIERARCHY
+// ============================================
+
+model Country {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique // ISO 3166-1 alpha-2 (e.g., "US", "CA")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  cities City[]
+  stores Store[]
+
+  @@index([code])
+  @@map("countries")
+}
+
+model City {
+  id        String   @id @default(cuid())
+  name      String
+  countryId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  country   Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  districts District[]
+  stores    Store[]
+
+  @@unique([name, countryId])
+  @@index([countryId])
+  @@map("cities")
+}
+
+model District {
+  id        String   @id @default(cuid())
+  name      String
+  cityId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  city   City    @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  stores Store[]
+
+  @@unique([name, cityId])
+  @@index([cityId])
+  @@map("districts")
+}
+
+// ============================================
+// STORE & CATEGORIES
+// ============================================
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  icon        String?
+  parentId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  parent         Category?        @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children       Category[]       @relation("CategoryHierarchy")
+  stores         Store[]
+  coupons        Coupon[]
+  storeCategory  StoreCategory[]
+
+  @@index([slug])
+  @@index([parentId])
+  @@map("categories")
+}
+
+enum StoreStatus {
+  PENDING       // Awaiting admin approval
+  APPROVED      // Approved by admin
+  REJECTED      // Rejected by admin
+  SUSPENDED     // Suspended by admin
+}
+
+model Store {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  description String?
+  logo        String?
+  coverImage  String?
+  website     String?
+  phone       String?
+  email       String?
+  address     String?
+  
+  // Location
+  countryId   String
+  cityId      String?
+  districtId  String?
+  
+  // Owner
+  ownerId     String
+  
+  // Status
+  status      StoreStatus  @default(PENDING)
+  isActive    Boolean      @default(true)
+  isVerified  Boolean      @default(false)
+  
+  // Featured (paid promotion)
+  isFeatured  Boolean      @default(false)
+  featuredUntil DateTime?
+  
+  // Approval
+  approvedAt  DateTime?
+  approvedBy  String?
+  rejectedAt  DateTime?
+  rejectedBy  String?
+  rejectionReason String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  owner           User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  country         Country         @relation(fields: [countryId], references: [id])
+  city            City?           @relation(fields: [cityId], references: [id])
+  district        District?       @relation(fields: [districtId], references: [id])
+  categories      Category[]
+  storeCategories StoreCategory[]
+  coupons         Coupon[]
+  reviews         Review[]
+  analytics       StoreAnalytics[]
+
+  @@index([slug])
+  @@index([ownerId])
+  @@index([countryId])
+  @@index([cityId])
+  @@index([districtId])
+  @@index([status])
+  @@index([isActive])
+  @@index([isVerified])
+  @@map("stores")
+}
+
+model StoreCategory {
+  id         String   @id @default(cuid())
+  storeId    String
+  categoryId String
+  createdAt  DateTime @default(now())
+
+  // Relations
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, categoryId])
+  @@index([storeId])
+  @@index([categoryId])
+  @@map("store_categories")
+}
+
+// ============================================
+// COUPONS
+// ============================================
+
+model Coupon {
+  id             String       @id @default(cuid())
+  code           String       @unique
+  title          String
+  description    String?
+  type           CouponType
+  discountValue  Float        // Percentage or fixed amount
+  status         CouponStatus @default(PENDING)
+  
+  // Limits
+  minPurchase    Float?       // Minimum purchase amount
+  maxDiscount    Float?       // Maximum discount amount (for percentage coupons)
+  usageLimit     Int?         // Total usage limit (null = unlimited)
+  usageCount     Int          @default(0)
+  perUserLimit   Int?         // Usage limit per user
+  
+  // Dates
+  startDate      DateTime
+  expiryDate     DateTime
+  
+  // Relations
+  storeId        String
+  categoryId     String?
+  createdById    String
+  
+  // Images
+  imageUrl       String?
+  thumbnailUrl   String?
+  
+  // SEO
+  slug           String       @unique
+  
+  // Approval
+  approvedAt     DateTime?
+  approvedBy     String?
+  rejectedAt     DateTime?
+  rejectedBy     String?
+  rejectionReason String?
+  
+  // Featured (paid promotion)
+  isFeatured     Boolean      @default(false)
+  featuredUntil  DateTime?
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  store          Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category       Category?      @relation(fields: [categoryId], references: [id])
+  createdBy      User           @relation("CouponCreator", fields: [createdById], references: [id])
+  usages         CouponUsage[]
+  affiliateLinks AffiliateLink[]
+  affiliateConversions AffiliateConversion[]
+  favorites      Favorite[]
+  analytics      CouponAnalytics[]
+
+  @@index([code])
+  @@index([slug])
+  @@index([storeId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([expiryDate])
+  @@index([createdById])
+  @@index([startDate, expiryDate])
+  @@map("coupons")
+}
+
+model CouponUsage {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  usedAt    DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+
+  // Relations
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, userId, usedAt])
+  @@index([couponId])
+  @@index([userId])
+  @@index([usedAt])
+  @@map("coupon_usages")
+}
+
+// ============================================
+// AFFILIATE SYSTEM
+// ============================================
+
+enum AffiliateStatus {
+  PENDING       // Awaiting approval
+  APPROVED      // Active affiliate
+  SUSPENDED     // Temporarily suspended
+  REJECTED      // Application rejected
+}
+
+enum PayoutStatus {
+  PENDING       // Payout requested
+  PROCESSING    // Being processed
+  COMPLETED     // Paid out
+  REJECTED      // Rejected
+}
+
+enum SubscriptionStatus {
+  ACTIVE        // Active subscription
+  PAST_DUE      // Payment failed
+  CANCELED      // Subscription canceled
+  INCOMPLETE    // Incomplete subscription
+  TRIALING      // In trial period
+}
+
+enum SubscriptionPlan {
+  FREE          // Free plan
+  BASIC         // Basic plan
+  PRO           // Pro plan
+  ENTERPRISE    // Enterprise plan
+}
+
+model Affiliate {
+  id                String          @id @default(cuid())
+  userId            String          @unique
+  affiliateCode     String          @unique // Unique affiliate code (e.g., AFF-ABC123)
+  status            AffiliateStatus @default(PENDING)
+  
+  // Commission settings
+  defaultCommissionRate Float       @default(10) // Default commission percentage
+  
+  // Balance tracking
+  pendingBalance    Float           @default(0) // Pending commission (not yet available for payout)
+  availableBalance  Float           @default(0) // Available for payout
+  totalEarnings     Float           @default(0) // All-time earnings
+  totalPaidOut      Float           @default(0) // Total amount paid out
+  
+  // Payment details
+  paymentEmail      String?
+  paymentMethod     String?         // PayPal, Bank Transfer, etc.
+  bankDetails       String?         @db.Text
+  
+  // Approval tracking
+  approvedAt        DateTime?
+  approvedBy        String?
+  rejectedAt        DateTime?
+  rejectedBy        String?
+  rejectionReason   String?
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  affiliateLinks    AffiliateLink[]
+  clicks            AffiliateClick[]
+  conversions       AffiliateConversion[]
+  payoutRequests    PayoutRequest[]
+
+  @@index([affiliateCode])
+  @@index([userId])
+  @@index([status])
+  @@map("affiliates")
+}
+
+model AffiliateLink {
+  id          String   @id @default(cuid())
+  affiliateId String
+  couponId    String?  // Optional - can be general affiliate link
+  trackingCode String  @unique // Unique tracking code for the link
+  
+  // Stats
+  totalClicks      Int      @default(0)
+  totalConversions Int      @default(0)
+  totalEarnings    Float    @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  coupon      Coupon?   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  clicks      AffiliateClick[]
+  conversions AffiliateConversion[]
+
+  @@index([trackingCode])
+  @@index([affiliateId])
+  @@index([couponId])
+  @@map("affiliate_links")
+}
+
+model AffiliateClick {
+  id              String   @id @default(cuid())
+  affiliateLinkId String
+  affiliateId     String
+  
+  // Tracking data
+  ipAddress       String?
+  userAgent       String?
+  referrer        String?
+  cookieId        String?  // Cookie for attribution tracking
+  
+  // Location data
+  country         String?
+  city            String?
+  
+  clickedAt       DateTime @default(now())
+
+  // Relations
+  affiliateLink   AffiliateLink @relation(fields: [affiliateLinkId], references: [id], onDelete: Cascade)
+  affiliate       Affiliate     @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  conversion      AffiliateConversion?
+
+  @@index([affiliateLinkId])
+  @@index([affiliateId])
+  @@index([cookieId])
+  @@index([clickedAt])
+  @@map("affiliate_clicks")
+}
+
+model AffiliateConversion {
+  id              String   @id @default(cuid())
+  affiliateLinkId String
+  affiliateId     String
+  clickId         String?  @unique // Link to original click
+  couponId        String?
+  userId          String?  // User who made the purchase
+  
+  // Commission data
+  orderValue      Float?   // Total order value
+  commissionRate  Float    // Commission percentage at time of conversion
+  commissionAmount Float   // Actual commission earned
+  
+  // Status
+  isPending       Boolean  @default(true) // False when moved to available balance
+  paidOut         Boolean  @default(false)
+  
+  // Tracking
+  cookieId        String?  // Attribution cookie
+  conversionType  String   @default("sale") // sale, lead, etc.
+  
+  convertedAt     DateTime @default(now())
+  approvedAt      DateTime? // When commission became available
+  paidOutAt       DateTime?
+
+  // Relations
+  affiliateLink   AffiliateLink @relation(fields: [affiliateLinkId], references: [id], onDelete: Cascade)
+  affiliate       Affiliate     @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  click           AffiliateClick? @relation(fields: [clickId], references: [id])
+  coupon          Coupon?       @relation(fields: [couponId], references: [id])
+
+  @@index([affiliateLinkId])
+  @@index([affiliateId])
+  @@index([clickId])
+  @@index([couponId])
+  @@index([cookieId])
+  @@index([isPending])
+  @@index([convertedAt])
+  @@map("affiliate_conversions")
+}
+
+model PayoutRequest {
+  id          String        @id @default(cuid())
+  affiliateId String
+  amount      Float
+  status      PayoutStatus  @default(PENDING)
+  
+  // Payment details
+  paymentMethod String
+  paymentEmail  String?
+  paymentDetails String?   @db.Text
+  
+  // Processing
+  requestedAt   DateTime    @default(now())
+  processedAt   DateTime?
+  processedBy   String?     // Admin who processed
+  completedAt   DateTime?
+  rejectedAt    DateTime?
+  rejectionReason String?
+  
+  // Transaction reference
+  transactionId String?
+
+  // Relations
+  affiliate     Affiliate   @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@index([affiliateId])
+  @@index([status])
+  @@index([requestedAt])
+  @@map("payout_requests")
+}
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+enum AnalyticsEventType {
+  VIEW          // Coupon viewed
+  COPY          // Coupon code copied
+  CLICK         // Coupon clicked (redirect to store)
+  USAGE         // Coupon used/redeemed
+  SHARE         // Coupon shared
+}
+
+model CouponAnalytics {
+  id        String   @id @default(cuid())
+  couponId  String
+  date      DateTime @default(now())
+  
+  // Aggregated counts for the day
+  views     Int      @default(0)
+  copies    Int      @default(0)
+  clicks    Int      @default(0)
+  usages    Int      @default(0)
+  shares    Int      @default(0)
+  
+  // Additional metrics
+  uniqueViews    Int @default(0)
+  uniqueCopies   Int @default(0)
+  uniqueClicks   Int @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, date])
+  @@index([couponId])
+  @@index([date])
+  @@map("coupon_analytics")
+}
+
+model StoreAnalytics {
+  id        String   @id @default(cuid())
+  storeId   String
+  date      DateTime @default(now())
+  
+  // Aggregated counts for the day
+  views          Int @default(0)
+  couponViews    Int @default(0)
+  couponCopies   Int @default(0)
+  couponClicks   Int @default(0)
+  couponUsages   Int @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, date])
+  @@index([storeId])
+  @@index([date])
+  @@map("store_analytics")
+}
+
+model AnalyticsEvent {
+  id        String             @id @default(cuid())
+  eventType AnalyticsEventType
+  
+  // Resource IDs
+  couponId  String?
+  storeId   String?
+  userId    String?
+  
+  // Session tracking
+  sessionId String?
+  
+  // Tracking data
+  ipAddress String?
+  userAgent String?
+  referrer  String?
+  country   String?
+  city      String?
+  
+  // Metadata
+  metadata  String?  @db.Text // JSON string for additional data
+  
+  createdAt DateTime @default(now())
+
+  @@index([couponId])
+  @@index([storeId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([sessionId])
+  @@index([createdAt])
+  @@map("analytics_events")
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+enum NotificationType {
+  COUPON_APPROVED       // Admin approved your coupon
+  COUPON_REJECTED       // Admin rejected your coupon
+  COUPON_EXPIRING       // Your coupon is expiring soon
+  STORE_APPROVED        // Admin approved your store
+  STORE_REJECTED        // Admin rejected your store
+  AFFILIATE_CONVERSION  // You earned a commission
+  PAYOUT_APPROVED       // Your payout was approved
+  PAYOUT_REJECTED       // Your payout was rejected
+  NEW_REVIEW            // Someone reviewed your store
+  NEW_COUPON            // New coupon from favorite store
+  SYSTEM                // System notifications
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  
+  // Links and actions
+  actionUrl String?
+  actionText String?
+  
+  // Resource references
+  couponId  String?
+  storeId   String?
+  affiliateId String?
+  
+  // Status
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  
+  // Email tracking
+  emailSent Boolean  @default(false)
+  emailSentAt DateTime?
+  
+  // Push notification tracking
+  pushSent Boolean  @default(false)
+  pushSentAt DateTime?
+  
+  // Metadata
+  metadata  String?  @db.Text // JSON string for additional data
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  deliveries NotificationDelivery[]
+
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================
+// PUSH NOTIFICATIONS
+// ============================================
+
+model PushSubscription {
+  id             String   @id @default(cuid())
+  userId         String
+  endpoint       String   @unique
+  platform       String   // 'web', 'ios', 'android'
+  auth           String   // Push auth key
+  p256dh         String   // Push public key
+  expirationTime BigInt?
+  userAgent      String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  lastUsedAt     DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@index([userId])
+  @@index([endpoint])
+  @@index([platform])
+  @@index([isActive])
+  @@map("push_subscriptions")
+}
+
+model NotificationPreference {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  enabled           Boolean  @default(true)
+  channelCoupons    Boolean  @default(true)
+  channelStores     Boolean  @default(true)
+  channelAffiliate  Boolean  @default(true)
+  channelSystem     Boolean  @default(true)
+  channelMarketing  Boolean  @default(false)
+  quietHoursEnabled Boolean  @default(false)
+  quietHoursStart   String?  // "22:00"
+  quietHoursEnd     String?  // "08:00"
+  sound             Boolean  @default(true)
+  vibration         Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notification_preferences")
+}
+
+model NotificationDelivery {
+  id              String   @id @default(cuid())
+  notificationId  String
+  subscriptionId  String
+  status          String   @default("pending") // pending, sent, failed, clicked, dismissed
+  sentAt          DateTime?
+  clickedAt       DateTime?
+  dismissedAt     DateTime?
+  error           String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  // Relations
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  subscription PushSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([sentAt])
+  @@map("notification_deliveries")
+}
+
+// ============================================
+// REVIEWS & FAVORITES
+// ============================================
+
+model Review {
+  id        String   @id @default(cuid())
+  storeId   String
+  userId    String
+  rating    Int      // 1-5 stars
+  comment   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, userId])
+  @@index([storeId])
+  @@index([userId])
+  @@index([rating])
+  @@map("reviews")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  couponId  String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, couponId])
+  @@index([userId])
+  @@index([couponId])
+  @@map("favorites")
+}
+
+// ============================================
+// STRIPE SUBSCRIPTIONS & PAYMENTS
+// ============================================
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String
+  
+  // Stripe IDs
+  stripeSubscriptionId String             @unique
+  stripeCustomerId     String
+  stripePriceId        String
+  stripeProductId      String
+  
+  // Subscription details
+  plan                 SubscriptionPlan
+  status               SubscriptionStatus
+  
+  // Billing
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean            @default(false)
+  canceledAt           DateTime?
+  
+  // Trial
+  trialStart           DateTime?
+  trialEnd             DateTime?
+  
+  // Limits based on plan
+  maxStores            Int                @default(1)
+  maxCoupons           Int                @default(10)
+  maxFeaturedCoupons   Int                @default(0)
+  maxFeaturedStores    Int                @default(0)
+  
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  // Relations
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices             Invoice[]
+
+  @@index([userId])
+  @@index([stripeSubscriptionId])
+  @@index([stripeCustomerId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id                   String    @id @default(cuid())
+  subscriptionId       String?
+  userId               String
+  
+  // Stripe IDs
+  stripeInvoiceId      String    @unique
+  stripeCustomerId     String
+  
+  // Invoice details
+  amount               Float
+  currency             String    @default("usd")
+  status               String    // paid, open, void, uncollectible
+  
+  // Billing
+  hostedInvoiceUrl     String?
+  invoicePdf           String?
+  
+  // Dates
+  periodStart          DateTime?
+  periodEnd            DateTime?
+  paidAt               DateTime?
+  dueDate              DateTime?
+  
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relations
+  subscription         Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([subscriptionId])
+  @@index([userId])
+  @@index([stripeInvoiceId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model Payment {
+  id                   String    @id @default(cuid())
+  userId               String
+  
+  // Stripe IDs
+  stripePaymentIntentId String   @unique
+  stripeCustomerId     String
+  
+  // Payment details
+  amount               Float
+  currency             String    @default("usd")
+  status               String    // succeeded, pending, failed
+  
+  // Purpose
+  type                 String    // subscription, featured_coupon, featured_store
+  resourceId           String?   // ID of coupon or store if applicable
+  description          String?
+  
+  // Metadata
+  metadata             String?   @db.Text // JSON string for additional data
+  
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([stripePaymentIntentId])
+  @@index([type])
+  @@index([resourceId])
+  @@map("payments")
+}
