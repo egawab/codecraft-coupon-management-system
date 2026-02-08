@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Generate a unique affiliate code
@@ -85,4 +86,93 @@ export function shouldApproveCommission(convertedAt: Date, approvalPeriodDays: n
   const approvalDate = new Date(convertedAt);
   approvalDate.setDate(approvalDate.getDate() + approvalPeriodDays);
   return now >= approvalDate;
+}
+
+/**
+ * Helper function to track conversion from cookie
+ */
+export async function trackConversionFromCookie(
+  cookieValue: string,
+  couponId?: string,
+  orderValue?: number,
+  userId?: string
+) {
+  const cookieData = parseAffiliateCookie(cookieValue);
+  if (!cookieData) {
+    return null;
+  }
+
+  const { affiliateLinkId, cookieId } = cookieData;
+
+  // Check if conversion already exists for this cookie
+  const existingConversion = await prisma.affiliateConversion.findFirst({
+    where: { cookieId },
+  });
+
+  if (existingConversion) {
+    return null; // Already converted
+  }
+
+  // Find the original click
+  const click = await prisma.affiliateClick.findFirst({
+    where: {
+      affiliateLinkId,
+      cookieId,
+    },
+    include: {
+      affiliateLink: {
+        include: {
+          affiliate: true,
+        },
+      },
+    },
+  });
+
+  if (!click) {
+    return null;
+  }
+
+  // Get commission rate
+  const commissionRate = click.affiliateLink.affiliate.defaultCommissionRate;
+  const commissionAmount = orderValue ? calculateCommission(orderValue, commissionRate) : 0;
+
+  // Create conversion
+  const conversion = await prisma.$transaction(async (tx) => {
+    const newConversion = await tx.affiliateConversion.create({
+      data: {
+        affiliateLinkId,
+        affiliateId: click.affiliateId,
+        clickId: click.id,
+        couponId: couponId || null,
+        userId: userId || null,
+        orderValue: orderValue || null,
+        commissionRate,
+        commissionAmount,
+        cookieId,
+        isPending: true,
+      },
+    });
+
+    // Update affiliate link stats
+    await tx.affiliateLink.update({
+      where: { id: affiliateLinkId },
+      data: {
+        totalConversions: { increment: 1 },
+        totalEarnings: { increment: commissionAmount },
+      },
+    });
+
+    // Update affiliate pending balance
+    await tx.affiliate.update({
+      where: { id: click.affiliateId },
+      data: {
+        pendingBalance: { increment: commissionAmount },
+        totalEarnings: { increment: commissionAmount },
+      },
+    });
+
+    return newConversion;
+  });
+
+  return conversion;
 }
