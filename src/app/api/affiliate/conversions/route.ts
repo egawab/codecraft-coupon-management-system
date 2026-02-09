@@ -1,3 +1,4 @@
+// Vercel deployment fix - ensures clean build without cache issues
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { trackConversionSchema } from '@/lib/validations/affiliate';
@@ -81,4 +82,3 @@ export async function POST(request: NextRequest) {
     return errorResponse(error as Error);
   }
 }
-
